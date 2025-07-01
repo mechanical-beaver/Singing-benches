@@ -1,0 +1,41 @@
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <SD.h>
+
+#include "ArduinoJson.hpp"
+#include "ArduinoJson/Deserialization/DeserializationError.hpp"
+#include "HardwareSerial.h"
+
+File Json;
+const char* Json_name = "/config.json";
+
+StaticJsonDocument<256> Json_conf;
+DeserializationError Json_error;
+
+void setup()
+{
+    Serial.begin(115200);
+    SD.begin(4);
+
+    Json = SD.open(Json_name);
+    if (!Json)
+    {
+        Serial.println("File not found");
+    }
+
+    Json_error = deserializeJson(Json_conf, Json);
+
+    Json.close();
+
+    if (Json_error)
+    {
+        Serial.print("Error:");
+        Serial.println(Json_error.c_str());
+    }
+
+    // int vol = Json_conf["vol"];
+}
+
+void loop()
+{
+}
