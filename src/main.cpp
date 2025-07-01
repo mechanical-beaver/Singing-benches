@@ -19,17 +19,17 @@
 
 // DAC Dout 25, 26 (maybe)
 
-#define SD_cs 4
+#define SD_cs 1
 
 #define LED_pin 48
 #define LED_count 1
 
-#define BCLK 1
-#define WS 2
-#define Dout 3
+#define BCLK 4
+#define WS 5
+#define Dout 6
 
-#define US_TRIG_pin 5
-#define US_ECHO_pin 6
+#define US_TRIG_pin 10
+#define US_ECHO_pin 11
 #define US_max_dist 300
 
 CRGB leds[LED_count];
@@ -39,7 +39,7 @@ Audio PCM5102;
 NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 
 void Led_on(uint8_t r, uint8_t g, uint8_t b);
-void Error403(String error_massage = "", bool serial_activ = true);
+void Error404(String error_massage = "", bool serial_activ = true);
 
 void setup()
 {
@@ -48,23 +48,24 @@ void setup()
 
     if (!Serial)
     {
-        Error403("", false);
+        Error404("", false);
     }
 
     if (!SD.begin(SD_cs))
     {
-        Error403("SD_card dont init");
+        Error404("SD_card dont init");
     }
 
     PCM5102.setPinout(BCLK, WS, Dout);
     PCM5102.setVolume(100);
+    PCM5102.connecttoFS(SD, "/test.mp3");
 
-    leds[0] = CRGB(0, 255, 0);
-    FastLED.show();
+    Led_on(0, 255, 0);
 }
 
 void loop()
 {
+    PCM5102.loop();
 }
 
 void Led_on(uint8_t r, uint8_t g, uint8_t b)
@@ -73,7 +74,7 @@ void Led_on(uint8_t r, uint8_t g, uint8_t b)
     FastLED.show();
 }
 
-void Error403(String error_massage, bool serial_activ)
+void Error404(String error_massage, bool serial_activ)
 {
     if (serial_activ)
     {
