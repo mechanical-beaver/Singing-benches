@@ -47,10 +47,10 @@ struct colors
     String success;
     String play;
 };
-
 colors Cols;
-
 uint8_t _volume;
+
+uint32_t global_timer;
 
 void led_on(String hex_code);
 void error404(String error_massage = "", bool serial_activ = true);
@@ -61,6 +61,7 @@ void setup()
 {
     Serial.begin(115200);
     FastLED.addLeds<WS2812, LED_pin, GRB>(leds, LED_count);
+    FastLED.setBrightness(100);
 
     if (!Serial)
     {
@@ -90,12 +91,21 @@ void loop()
             play();
         }
     }
+
+    if (leds[0].r + leds[0].g + leds[0].b != 0)
+    {
+        if (millis() - global_timer >= 2000)
+        {
+            led_on("0x000000");
+        }
+    }
 }
 
 void led_on(String hex_code)
 {
     leds[0] = strtoul(hex_code.c_str(), 0, 16);
     FastLED.show();
+    global_timer = millis();
 }
 
 void error404(String error_massage, bool serial_activ)
@@ -144,7 +154,7 @@ void play()
     uint32_t timer1 = millis();
 
     PCM5102.connecttoFS(SD, "/test.mp3");
-
+    led_on(Cols.play);
     while (status)
     {
         PCM5102.loop();

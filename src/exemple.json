@@ -1,0 +1,10 @@
+{
+    "Led_colors":
+    {
+        "Error": "0xFF0000",
+        "Successful": "0x00FF00",
+        "Play": "0x00D2FF"
+    },
+    "_comment": "min - 0, max - 21",
+    "Volume": 5  
+}
