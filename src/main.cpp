@@ -161,14 +161,16 @@ void play()
 
         if (!dur_stat)
         {
-            duration = PCM5102.getAudioFileDuration();
-            if (duration != 0)
+            if (PCM5102.getAudioFileDuration() != 0)
             {
+                duration = PCM5102.getAudioFileDuration() + 1;
                 dur_stat = true;
             }
         }
 
-        if (dur_stat && millis() - timer1 >= (duration + 3) * 1000)
+        Serial.println(PCM5102.getAudioCurrentTime());
+
+        if (dur_stat && duration == PCM5102.getAudioCurrentTime())
         {
             status = false;
         }
@@ -182,5 +184,4 @@ void play()
             }
         }
     }
-    Serial.println("end");
 }
