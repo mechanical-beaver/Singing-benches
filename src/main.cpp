@@ -105,7 +105,7 @@ void loop()
 
     if (leds[0].r + leds[0].g + leds[0].b != 0)
     {
-        if (millis() - global_timer >= 2000)
+        if (millis() - global_timer >= 1000)
         {
             led_on("0x000000");
         }
@@ -199,5 +199,6 @@ void rest()
 {
     Serial.println("Restarting...");
     led_on(Cols.restart);
+    delay(1000);
     digitalWrite(RST_pin, 0);
 }
