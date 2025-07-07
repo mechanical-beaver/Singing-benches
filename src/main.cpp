@@ -12,6 +12,7 @@
 #include "ArduinoJson/Object/JsonObject.hpp"
 #include "HardwareSerial.h"
 #include "WString.h"
+#include "esp32-hal-gpio.h"
 #include "esp32-hal.h"
 
 // Typically                                     // PCM5102
@@ -24,17 +25,19 @@
 #define LED_pin 48
 #define LED_count 1
 
-#define BCLK 3
-#define WS 1
-#define Dout 9
+#define BCK 4  // 3
+#define LCK 6  // 1
+#define DIN 5  // 9
 
-#define US_TRIG_pin 10
-#define US_ECHO_pin 11
-#define US_max_dist 300
+#define RST_pin 17
+
+// #define US_TRIG_pin 1
+// #define US_ECHO_pin 2
+// #define US_max_dist 300
 
 CRGB leds[LED_count];
 Audio PCM5102;
-NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
+// NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 
 File Json;
 const char* Json_name = "/config.json";
@@ -46,6 +49,7 @@ struct colors
     String err;
     String success;
     String play;
+    String restart;
 };
 colors Cols;
 uint8_t _volume;
@@ -56,10 +60,13 @@ void led_on(String hex_code);
 void error404(String error_massage = "", bool serial_activ = true);
 void play();
 void get_conf();
+void rest();
 
 void setup()
 {
     Serial.begin(115200);
+    pinMode(RST_pin, OUTPUT);
+    digitalWrite(RST_pin, 1);
     FastLED.addLeds<WS2812, LED_pin, GRB>(leds, LED_count);
     FastLED.setBrightness(100);
 
@@ -75,7 +82,7 @@ void setup()
 
     get_conf();
 
-    PCM5102.setPinout(BCLK, WS, Dout);
+    PCM5102.setPinout(BCK, LCK, DIN);
     PCM5102.setVolume(_volume);
 
     led_on(Cols.success);
@@ -89,6 +96,10 @@ void loop()
         if (key == "play")
         {
             play();
+        }
+        else if (key)
+        {
+            rest();
         }
     }
 
@@ -142,6 +153,7 @@ void get_conf()
     Cols.err = cols["Error"].as<String>();
     Cols.success = cols["Successful"].as<String>();
     Cols.play = cols["Play"].as<String>();
+    Cols.restart = cols["Restart"].as<String>();
 
     _volume = Json_conf["Volume"];
 }
@@ -151,7 +163,6 @@ void play()
     bool status = true;
     uint32_t duration;
     bool dur_stat = false;
-    uint32_t timer1 = millis();
 
     PCM5102.connecttoFS(SD, "/test.mp3");
     led_on(Cols.play);
@@ -168,8 +179,6 @@ void play()
             }
         }
 
-        Serial.println(PCM5102.getAudioCurrentTime());
-
         if (dur_stat && duration == PCM5102.getAudioCurrentTime())
         {
             status = false;
@@ -184,4 +193,11 @@ void play()
             }
         }
     }
+}
+
+void rest()
+{
+    Serial.println("Restarting...");
+    led_on(Cols.restart);
+    digitalWrite(RST_pin, 0);
 }
