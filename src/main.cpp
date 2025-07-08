@@ -1,10 +1,22 @@
+// Typically                                     // PCM5102
+// BCLK - bit clock                              // BCK
+// WS - Word Select = LRCLK - left rigth clock   // LCK
+// Dout                                          // DIN
+
+//-----Lib-----
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <Audio.h>
+#include <BLE2902.h>
+#include <BLE2904.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
 #include <FastLED.h>
 #include <NewPing.h>
 #include <SD.h>
 
+//-----Dependents-----
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -15,35 +27,41 @@
 #include "esp32-hal-gpio.h"
 #include "esp32-hal.h"
 
-// Typically                                     // PCM5102
-// BCLK - bit clock                              // BCK
-// WS - Word Select = LRCLK - left rigth clock   // LCK
-// Dout                                          // DIN
-
+//-----Pins-----
 #define SD_cs 10
-
 #define LED_pin 48
-#define LED_count 1
-
-#define BCK 4  // 3
-#define LCK 6  // 1
-#define DIN 5  // 9
-
+#define BCK 4
+#define LCK 6
+#define DIN 5
 #define RST_pin 17
-
 // #define US_TRIG_pin 1
 // #define US_ECHO_pin 2
 // #define US_max_dist 300
 
-CRGB leds[LED_count];
-Audio PCM5102;
-// NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
+//-----BT_define-----
+#define BT_name "ESP32_Test"
+#define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
+//-----OtherDefine-----
+#define LED_count 1
+
+//-----Json_var-----
 File Json;
-const char* Json_name = "/config.json";
+const char *Json_name = "/config.json";
 StaticJsonDocument<256> Json_conf;
 DeserializationError Json_error;
 
+//-----BLE_var-----
+BLEServer *pServer = nullptr;
+BLECharacteristic *pTxCharacteristic;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+bool BT_flag = false;
+
+//-----Leds_var-----
+CRGB leds[LED_count];
 struct colors
 {
     String err;
@@ -52,16 +70,53 @@ struct colors
     String restart;
 };
 colors Cols;
-uint8_t _volume;
 
+//-----Other_var-----
+uint8_t _volume;
 uint32_t global_timer;
 
+//-----Classes-----
+class MyServerCallbacks : public BLEServerCallbacks
+{
+    void onConnect(BLEServer *pServer)
+    {
+        deviceConnected = true;
+    }
+
+    void onDisconnect(BLEServer *pServer)
+    {
+        deviceConnected = false;
+    }
+};
+
+class MyCallbacks : public BLECharacteristicCallbacks
+{
+    void onWrite(BLECharacteristic *pCharacteristic)
+    {
+        std::string rxValue = pCharacteristic->getValue();
+        if (rxValue.length() > 0)
+        {
+            Serial.println(rxValue.c_str());  // BLE → Serial
+        }
+    }
+};
+
+//-----Object-----
+Audio PCM5102;
+// NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
+
+//-----Func_init-----
 void led_on(String hex_code);
 void error404(String error_massage = "", bool serial_activ = true);
 void play();
 void get_conf();
 void rest();
+void BT_init();
+void BT_connect();
+void BT_disconnect();
+void Write_to_BT();
 
+//-----Standart-----
 void setup()
 {
     Serial.begin(115200);
@@ -82,6 +137,8 @@ void setup()
 
     get_conf();
 
+    BT_init();
+
     PCM5102.setPinout(BCK, LCK, DIN);
     PCM5102.setVolume(_volume);
 
@@ -90,18 +147,18 @@ void setup()
 
 void loop()
 {
-    if (Serial.available())
-    {
-        String key = Serial.readString();
-        if (key == "play")
-        {
-            play();
-        }
-        else if (key)
-        {
-            rest();
-        }
-    }
+    // if (Serial.available())
+    // {
+    //     String key = Serial.readString();
+    //     if (key == "play")
+    //     {
+    //         play();
+    //     }
+    //     else if (key == "restart")
+    //     {
+    //         rest();
+    //     }
+    // }
 
     if (leds[0].r + leds[0].g + leds[0].b != 0)
     {
@@ -110,8 +167,13 @@ void loop()
             led_on("0x000000");
         }
     }
+
+    BT_connect();
+    BT_disconnect();
+    Write_to_BT();
 }
 
+//-----Func_impl-----
 void led_on(String hex_code)
 {
     leds[0] = strtoul(hex_code.c_str(), 0, 16);
@@ -156,6 +218,79 @@ void get_conf()
     Cols.restart = cols["Restart"].as<String>();
 
     _volume = Json_conf["Volume"];
+}
+
+void BT_init()
+{
+    BLEDevice::init(BT_name);
+
+    BLESecurity *pSecurity = new BLESecurity();
+    pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
+    pSecurity->setCapability(ESP_IO_CAP_OUT);  // клиент вводит PIN
+    pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+    pSecurity->setKeySize(16);
+    pSecurity->setStaticPIN(123456);  // <-- PIN-код
+
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+
+    // Характеристика TX — ESP32 → BLE клиент (NOTIFY)
+    pTxCharacteristic =
+        pService->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY);
+    pTxCharacteristic->addDescriptor(new BLE2902());
+
+    // Характеристика RX — BLE клиент → ESP32(WRITE)
+    BLECharacteristic *pRxCharacteristic =
+        pService->createCharacteristic(CHARACTERISTIC_UUID_RX, BLECharacteristic::PROPERTY_WRITE);
+    pRxCharacteristic->setCallbacks(new MyCallbacks());
+
+    pService->start();
+    pServer->getAdvertising()->start();
+}
+
+void BT_connect()
+{
+    if (deviceConnected && !oldDeviceConnected)
+    {
+        Serial.println("BLE client connected.");
+        oldDeviceConnected = deviceConnected;
+    }
+}
+
+void BT_disconnect()
+{
+    if (!deviceConnected && oldDeviceConnected)
+    {
+        if (!BT_flag)
+        {
+            global_timer = millis();
+            BT_flag = true;
+        }
+        else if (millis() - global_timer >= 500)
+        {
+            pServer->startAdvertising();
+            Serial.println("BLE client disconnected. Start advertising...");
+            oldDeviceConnected = deviceConnected;
+        }
+    }
+}
+
+void Write_to_BT()
+{
+    if (deviceConnected && Serial.available())
+    {
+        String input = Serial.readStringUntil('\n');
+        input.trim();  // удалить \r и пробелы, если есть
+
+        if (input.length() > 0)
+        {
+            // Отправка BLE клиенту
+            pTxCharacteristic->setValue(input.c_str());
+            pTxCharacteristic->notify();
+        }
+    }
 }
 
 void play()
