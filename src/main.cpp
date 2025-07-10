@@ -26,15 +26,15 @@
 #include "WString.h"
 #include "esp32-hal-gpio.h"
 #include "esp32-hal.h"
+#include "fl/str.h"
 
 //-----Mode-----
 #define SD_Card
 #define SPIFFS
 
-// #define UART
-// #define BT
-
-// #define LED
+#define BT
+#define UART
+#define LED
 
 //-----Pins-----
 #define SD_cs 10
@@ -68,6 +68,9 @@ struct colors
 };
 colors Cols;
 void led_on(String hex_code);
+#define LED_ON(hex) led_on(hex)
+#else
+#define LED_ON(hex) ((void)0)
 #endif
 
 //-----Other_var-----
@@ -86,6 +89,7 @@ BLECharacteristic *pTxCharacteristic;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 bool BT_flag = false;
+String BT_massage;
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -107,7 +111,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
         std::string rxValue = pCharacteristic->getValue();
         if (rxValue.length() > 0)
         {
-            Serial.println(rxValue.c_str());  // BLE → Serial
+            BT_massage = rxValue.c_str();
         }
     }
 };
@@ -115,8 +119,18 @@ class MyCallbacks : public BLECharacteristicCallbacks
 void BT_init();
 void BT_connect();
 void BT_disconnect();
-void Write_to_BT();
+template <typename T>
+void Write_to_BT(T msg);
 
+#define BT_INIT() BT_init()
+#define BT_CNCT() BT_connect()
+#define BT_DCNCT() BT_disconnect()
+#define BT_WRITE(msg) Write_to_BT(msg)
+#else
+#define BT_INIT() ((void)0)
+#define BT_CNCT() ((void)0)
+#define BT_DCNCT() ((void)0)
+#define BT_WRITE(msg) ((void)0)
 #endif
 
 //-----Object-----
@@ -125,7 +139,12 @@ Audio PCM5102;
 
 //-----Func_init-----
 #ifdef UART
-void error404(String error_massage = "", bool serial_activ = true);
+void error404(String error_massage = "");
+#define ERR(err) error404(err)
+#define UART_PRINT(msg) Serial.println(msg)
+#else
+#define ERR(err) while (1)
+#define UART_PRINT(msg) ((void)0)
 #endif
 void play();
 void get_conf();
@@ -136,16 +155,9 @@ void setup()
 {
 #ifdef UART
     Serial.begin(115200);
-    if (!Serial)
-    {
-#ifdef UART
-        error404("", false);
-#else
-        while (1);
+    if (!Serial) ERR();
 #endif
-    }
 
-#endif
     pinMode(RST_pin, OUTPUT);
     digitalWrite(RST_pin, 1);
 
@@ -156,57 +168,58 @@ void setup()
 
     if (!SD.begin(SD_cs))
     {
-#ifdef UART
-        error404("SD_card dont init");
-#else
-        while (1);
-#endif
+        ERR("ST dont init");
     }
 
     get_conf();
 
-#ifdef BT
-    BT_init();
-#endif
+    BT_INIT();
 
     PCM5102.setPinout(BCK, LCK, DIN);
     PCM5102.setVolume(_volume);
 
-#ifdef LED
-    led_on(Cols.success);
-#endif
+    LED_ON(Cols.success);
 }
 
 void loop()
 {
-#ifdef UART
-    if (Serial.available())
-    {
-        String key = Serial.readString();
-        if (key == "play")
-        {
-            play();
-        }
-        else if (key == "restart")
-        {
-            rest();
-        }
-    }
-#endif
+    // #ifdef UART
+    //     if (Serial.available())
+    //     {
+    //         String key = Serial.readString();
+    //         if (key == "play")
+    //         {
+    //             play();
+    //         }
+    //         else if (key == "restart")
+    //         {
+    //             rest();
+    //         }
+    //     }
+    // #endif
 
 #ifdef LED
     if (leds[0].r + leds[0].g + leds[0].b != 0)
     {
         if (millis() - global_timer >= 1000)
         {
-            led_on("0x000000");
+            LED_ON("0x000000");
         }
     }
 #endif
 
-    // BT_connect();
-    // BT_disconnect();
-    // Write_to_BT();
+    if (Serial.available())
+    {
+        String key = Serial.readString();
+        BT_WRITE(key);
+    }
+    if (BT_massage.length() != 0)
+    {
+        Serial.println(BT_massage);
+        BT_massage = "";
+    }
+    BT_CNCT();
+    BT_DCNCT();
 }
 
 //-----Func_impl-----
@@ -220,15 +233,13 @@ void led_on(String hex_code)
 #endif
 
 #ifdef UART
-void error404(String error_massage, bool serial_activ)
+void error404(String error_massage)
 {
-    if (serial_activ)
+    if (error_massage != "")
     {
         Serial.println(error_massage);
     }
-#ifdef LED
-    led_on(Cols.err);
-#endif
+    LED_ON(Cols.err);
     while (true);
 }
 #endif
@@ -238,11 +249,7 @@ void get_conf()
     Json = SD.open(Json_name);
     if (!Json)
     {
-#ifdef UART
-        error404("File not found");
-#else
-        while (1);
-#endif
+        ERR("File not init");
     }
 
     Json_error = deserializeJson(Json_conf, Json);
@@ -251,18 +258,13 @@ void get_conf()
 
     if (Json_error)
     {
-#ifdef UART
         char err[128];
         sprintf(err, "Error: %s", Json_error.c_str());
-        error404(err);
-#else
-        while (1);
-#endif
+        ERR(err);
     }
 
 #ifdef LED
     JsonObject cols = Json_conf["Led_colors"];
-
     Cols.err = cols["Error"].as<String>();
     Cols.success = cols["Successful"].as<String>();
     Cols.play = cols["Play"].as<String>();
@@ -307,9 +309,7 @@ void BT_connect()
 {
     if (deviceConnected && !oldDeviceConnected)
     {
-#ifdef UART
-        Serial.println("BLE client connected.");
-#endif
+        UART_PRINT("BLE client connected");
         oldDeviceConnected = deviceConnected;
     }
 }
@@ -326,24 +326,21 @@ void BT_disconnect()
         else if (millis() - global_timer >= 500)
         {
             pServer->startAdvertising();
-#ifdef UART
-            Serial.println("BLE client disconnected. Start advertising...");
-#endif
+            UART_PRINT("BLE client disconnected. Start advertising...");
             oldDeviceConnected = deviceConnected;
         }
     }
 }
 
-void Write_to_BT()
+template <typename T>
+void Write_to_BT(T msg)
 {
-    if (deviceConnected && Serial.available())
+    if (deviceConnected)
     {
-        String input = Serial.readStringUntil('\n');
-        input.trim();  // удалить \r и пробелы, если есть
+        String input = (String)msg;
 
         if (input.length() > 0)
         {
-            // Отправка BLE клиенту
             pTxCharacteristic->setValue(input.c_str());
             pTxCharacteristic->notify();
         }
@@ -358,9 +355,7 @@ void play()
     bool dur_stat = false;
 
     PCM5102.connecttoFS(SD, "/test.mp3");
-#ifdef LED
-    led_on(Cols.play);
-#endif
+    LED_ON(Cols.play);
     while (status)
     {
         PCM5102.loop();
@@ -392,12 +387,8 @@ void play()
 
 void rest()
 {
-#ifdef UART
-    Serial.println("Restarting...");
-#endif
-#ifdef LED
-    led_on(Cols.restart);
-#endif
+    UART_PRINT("Restarting");
+    LED_ON(Cols.restart);
     delay(1000);
     digitalWrite(RST_pin, 0);
 }
