@@ -118,7 +118,7 @@ GenerateClassCluster=0
 DocumentUniqueId=RMFATYYF
 
 [Document5]
-DocumentPath=ESP32S3.SchLib
+DocumentPath=Schemati_design.SchLib
 AnnotationEnabled=1
 AnnotateStartValue=1
 AnnotationIndexControlEnabled=0
@@ -135,7 +135,7 @@ GenerateClassCluster=0
 DocumentUniqueId=ELRRUPDA
 
 [Document6]
-DocumentPath=ESP-S3-Wroom1.PcbLib
+DocumentPath=Footprint.PcbLib
 AnnotationEnabled=1
 AnnotateStartValue=1
 AnnotationIndexControlEnabled=0
