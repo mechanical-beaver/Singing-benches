@@ -84,23 +84,6 @@ GenerateClassCluster=0
 DocumentUniqueId=QVVQBESN
 
 [Document3]
-DocumentPath=SDcardReader.SchDoc
-AnnotationEnabled=1
-AnnotateStartValue=1
-AnnotationIndexControlEnabled=0
-AnnotateSuffix=
-AnnotateScope=All
-AnnotateOrder=-1
-DoLibraryUpdate=1
-DoDatabaseUpdate=1
-ClassGenCCAutoEnabled=1
-ClassGenCCAutoRoomEnabled=0
-ClassGenNCAutoScope=None
-DItemRevisionGUID=
-GenerateClassCluster=0
-DocumentUniqueId=KGBAQNXS
-
-[Document4]
 DocumentPath=ESP32S3.SchDoc
 AnnotationEnabled=1
 AnnotateStartValue=1
@@ -117,7 +100,7 @@ DItemRevisionGUID=
 GenerateClassCluster=0
 DocumentUniqueId=RMFATYYF
 
-[Document5]
+[Document4]
 DocumentPath=Schemati_design.SchLib
 AnnotationEnabled=1
 AnnotateStartValue=1
@@ -134,7 +117,7 @@ DItemRevisionGUID=
 GenerateClassCluster=0
 DocumentUniqueId=ELRRUPDA
 
-[Document6]
+[Document5]
 DocumentPath=Footprint.PcbLib
 AnnotationEnabled=1
 AnnotateStartValue=1

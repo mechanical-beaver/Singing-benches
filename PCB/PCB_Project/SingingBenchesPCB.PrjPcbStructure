@@ -1,4 +1,3 @@
-Record=TopLevelDocument|FileName=ESP32S3.SchDoc|SheetNumber=4
+Record=TopLevelDocument|FileName=ESP32S3.SchDoc|SheetNumber=3
 Record=NoMainPathDocument|SourceDocument=ESP32S3.SchDoc|FileName=PCM5102.SchDoc|SheetNumber=1
-Record=NoMainPathDocument|SourceDocument=ESP32S3.SchDoc|FileName=SDcardReader.SchDoc|SheetNumber=3
 Record=NoMainPathDocument|SourceDocument=ESP32S3.SchDoc|FileName=TPA3116D2.SchDoc|SheetNumber=2
