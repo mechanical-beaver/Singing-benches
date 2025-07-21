@@ -20,6 +20,7 @@
 #include "ArduinoJson/Object/JsonObject.hpp"
 #include "BLECharacteristic.h"
 #include "BLESecurity.h"
+// #include "BLEUUID.h"
 #include "HardwareSerial.h"
 #include "WString.h"
 #include "esp32-hal-bt.h"
@@ -64,11 +65,11 @@
 
 //-----OtherDefine-----
 #define LED_count 1
-#define BT_name "ESP32_Test"
-#define BT_pass 123456
-#define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+// #define BT_name "ESP32_Test"
+// #define BT_pass 123456
+// #define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+// #define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+// #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 #define US_max_dist 300
 #define Trig_dist 100
 #define Trig_lag 2000
@@ -123,13 +124,13 @@ String BT_massage;
 
 struct bt_uuid
 {
-    String service;
-    String tx;
-    String rx;
+    char service[64];
+    char tx[64];
+    char rx[64];
 };
 bt_uuid _bt_uuid;
-String _bt_name;
-String _bt_pass;
+char _bt_name[16];
+uint32_t _bt_pass;
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -403,40 +404,50 @@ void get_conf()
     }
 
 #ifdef LED
-    JsonObject cols = config["LED"];
-    _cols.err = cols["error"].as<String>();
-    _cols.success = cols["successful"].as<String>();
-    _cols.play = cols["play"].as<String>();
-    _cols.restart = cols["restart"].as<String>();
+    _cols.err = config["LED"]["error"].as<String>();
+    _cols.success = config["LED"]["successful"].as<String>();
+    _cols.play = config["LED"]["play"].as<String>();
+    _cols.restart = config["LED"]["restart"].as<String>();
 #endif
 
 #ifdef BT
-    JsonObject bt = config[""]
+    strncpy(_bt_name, config["BT"]["name"], sizeof(_bt_name));
+    _bt_pass = config["BT"]["pass"];
+
+    strncpy(_bt_uuid.service, config["BT"]["UUID"]["service"], sizeof(_bt_uuid.service));
+    strncpy(_bt_uuid.tx, config["BT"]["UUID"]["chrctrstc_tx"], sizeof(_bt_uuid.tx));
+    strncpy(_bt_uuid.rx, config["BT"]["UUID"]["chrctrstc_rx"], sizeof(_bt_uuid.rx));
 #endif
-        _volume = config["Volume"];
+
+    _max_dist = config["US"]["max_dist"];
+    _trig_dist = config["US"]["trig_dist"];
+    _trig_lag = config["US"]["trig_lag"];
+
+    _volume = config["DAC"]["volume"];
 }
 
 #ifdef BT
 void BT_init()
 {
-    BLEDevice::init(BT_name);
+    BLEDevice::init(_bt_name);
 
     BLESecurity *BT_security = new BLESecurity();
     BT_security->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
     BT_security->setCapability(ESP_IO_CAP_OUT);
     BT_security->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
     BT_security->setKeySize(16);
-    BT_security->setStaticPIN(BT_pass);
+    BT_security->setStaticPIN(_bt_pass);
 
     BT_server = BLEDevice::createServer();
     BT_server->setCallbacks(new MyServerCallbacks());
 
     BLEService *BT_service;
-    BT_service = BT_server->createService(SERVICE_UUID);
-    BT_tx_chrctrstc = BT_service->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY);
+    BT_service = BT_server->createService(_bt_uuid.service);
+
+    BT_tx_chrctrstc = BT_service->createCharacteristic(_bt_uuid.tx, BLECharacteristic::PROPERTY_NOTIFY);
     BT_tx_chrctrstc->addDescriptor(new BLE2902());
 
-    BLECharacteristic *BT_rx_chrctrstc = BT_service->createCharacteristic(CHARACTERISTIC_UUID_RX, BLECharacteristic::PROPERTY_WRITE);
+    BLECharacteristic *BT_rx_chrctrstc = BT_service->createCharacteristic(_bt_uuid.rx, BLECharacteristic::PROPERTY_WRITE);
     BT_rx_chrctrstc->setCallbacks(new MyCallbacks());
 
     BT_service->start();
@@ -482,12 +493,4 @@ void Write_to_BT(T msg)
     }
 }
 #endif
-
-// void rest()
-// {
-//     UART_PRINT("Restarting");
-//     LED_ON(_cols.restart);
-//     delay(1000);
-//     digitalWrite(RST_pin, 0);
-// }
 //=====Func_impl=====
