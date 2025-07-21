@@ -1,10 +1,30 @@
 {
-    "Led_colors":
+    "LED":
     {
-        "Error": "0xFF0000",
-        "Successful": "0x00FF00",
-        "Play": "0x00D2FF"
+        "error": "0xFF0000",
+        "successful": "0x00FF00",
+        "play": "0x00D2FF",
+        "rest":
     },
-    "_comment": "min - 0, max - 21",
-    "Volume": 5  
+    "DAC":
+    {
+        "volume": 5  
+    },
+    "BT":
+    {
+        "name": "ESP32_test1",
+        "pass": 123456,
+        "UUID":
+        {
+            "SERVICE": "472d6a35-a918-4864-9d69-4515ab94451d",
+            "CHRCTRSTC_TX": "49dafec7-f6b2-46d9-b52a-43c99e6ca7f1",
+            "CHRCTRSTC_RX": "195ebdf9-791d-43bf-a448-475aef312ad2"
+        }
+    },
+    "US":
+    {
+        "max_dist": 300,
+        "trig_dist": 50,
+        "trig_lag": 2000
+    }
 }

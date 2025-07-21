@@ -1,8 +1,3 @@
-// Typically                                     // PCM5102
-// BCLK - bit clock                              // BCK
-// WS - Word Select = LRCLK - left rigth clock   // LCK
-// Dout                                          // DIN
-
 //-----Lib-----
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -15,6 +10,7 @@
 #include <FastLED.h>
 #include <NewPing.h>
 #include <SD.h>
+//=====Lib=====
 
 //-----Dependents-----
 #include <cstdint>
@@ -22,11 +18,16 @@
 #include <cstdlib>
 
 #include "ArduinoJson/Object/JsonObject.hpp"
+#include "BLECharacteristic.h"
+#include "BLESecurity.h"
 #include "HardwareSerial.h"
 #include "WString.h"
+#include "esp32-hal-bt.h"
 #include "esp32-hal-gpio.h"
 #include "esp32-hal.h"
 #include "fl/str.h"
+#include "pgmspace.h"
+//=====Dependents=====
 
 //-----Mode-----
 #define SD_Card
@@ -35,30 +36,62 @@
 #define BT
 #define UART
 #define LED
+//=====Mode=====
 
 //-----Pins-----
-#define SD_cs 10
-#define LED_pin 48
+// PCM5102
+// Typically                                     // PCM5102
+// BCLK - bit clock                              // BCK
+// WS - Word Select = LRCLK - left rigth clock   // LCK
+// Dout                                          // DIN
 #define BCK 4
 #define LCK 6
 #define DIN 5
-#define RST_pin 17
-// #define US_TRIG_pin 1
-// #define US_ECHO_pin 2
-// #define US_max_dist 300
+
+// SPI_CD
+//  MISO 13
+//  SCK 12
+//  MOSI 11
+
+// US_sensor
+#define US_TRIG_pin 17
+#define US_ECHO_pin 18
+
+// Other
+#define LED_pin 48
+#define SD_cs 10
+//=====Pins=====
 
 //-----OtherDefine-----
 #define LED_count 1
+#define BT_name "ESP32_Test"
+#define BT_pass 123456
+#define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define US_max_dist 300
+#define Trig_dist 100
+#define Trig_lag 2000
+//=====OtherDefine=====
 
 //-----Json_var-----
 File Json;
 const char *Json_name = "/config.json";
-StaticJsonDocument<256> Json_conf;
+JsonDocument config;
 DeserializationError Json_error;
+//=====Json_var=====
+
+//-----JsonData-----
+uint8_t _volume;
+uint16_t _max_dist;
+uint16_t _trig_dist;
+uint32_t _trig_lag;
+//=====JsonData=====
 
 //-----Leds-----
 #ifdef LED
 CRGB leds[LED_count];
+
 struct colors
 {
     String err;
@@ -66,49 +99,56 @@ struct colors
     String play;
     String restart;
 };
-colors Cols;
+colors _cols;
+
 void led_on(String hex_code);
+void led_lag_off();
+
 #define LED_ON(hex) led_on(hex)
+#define LED_LAG() led_lag_off()
 #else
 #define LED_ON(hex) ((void)0)
+#define LELED_LAG() ((void)0)
 #endif
+//=====Leds=====
 
-//-----Other_var-----
-uint8_t _volume;
-uint32_t global_timer;
-
-#ifdef BT
 //-----BT-----
-#define BT_name "ESP32_Test"
-#define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
-
-BLEServer *pServer = nullptr;
-BLECharacteristic *pTxCharacteristic;
-bool deviceConnected = false;
-bool oldDeviceConnected = false;
+#ifdef BT
+BLEServer *BT_server = nullptr;
+BLECharacteristic *BT_tx_chrctrstc;
+bool connect_status = false;
+bool old_connect_status = false;
 bool BT_flag = false;
 String BT_massage;
 
+struct bt_uuid
+{
+    String service;
+    String tx;
+    String rx;
+};
+bt_uuid _bt_uuid;
+String _bt_name;
+String _bt_pass;
+
 class MyServerCallbacks : public BLEServerCallbacks
 {
-    void onConnect(BLEServer *pServer)
+    void onConnect(BLEServer *BT_server)
     {
-        deviceConnected = true;
+        connect_status = true;
     }
 
-    void onDisconnect(BLEServer *pServer)
+    void onDisconnect(BLEServer *BT_server)
     {
-        deviceConnected = false;
+        connect_status = false;
     }
 };
 
 class MyCallbacks : public BLECharacteristicCallbacks
 {
-    void onWrite(BLECharacteristic *pCharacteristic)
+    void onWrite(BLECharacteristic *BT_chrctrstc)
     {
-        std::string rxValue = pCharacteristic->getValue();
+        std::string rxValue = BT_chrctrstc->getValue();
         if (rxValue.length() > 0)
         {
             BT_massage = rxValue.c_str();
@@ -117,27 +157,21 @@ class MyCallbacks : public BLECharacteristicCallbacks
 };
 
 void BT_init();
-void BT_connect();
-void BT_disconnect();
+void BT_user_status();
 template <typename T>
 void Write_to_BT(T msg);
 
 #define BT_INIT() BT_init()
-#define BT_CNCT() BT_connect()
-#define BT_DCNCT() BT_disconnect()
+#define BT_USR_STATUS() BT_user_status()
 #define BT_WRITE(msg) Write_to_BT(msg)
 #else
 #define BT_INIT() ((void)0)
-#define BT_CNCT() ((void)0)
-#define BT_DCNCT() ((void)0)
+#define BT_USR_STATUS() ((void)0)
 #define BT_WRITE(msg) ((void)0)
 #endif
+//=====BT=====
 
-//-----Object-----
-Audio PCM5102;
-// NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
-
-//-----Func_init-----
+//-----UART-----
 #ifdef UART
 void error404(String error_massage = "");
 #define ERR(err) error404(err)
@@ -146,9 +180,30 @@ void error404(String error_massage = "");
 #define ERR(err) while (1)
 #define UART_PRINT(msg) ((void)0)
 #endif
+//=====UART=====
+
+//-----Other_var-----
+uint32_t global_timer;
+bool Trig_flag = false;
+//=====Other_var=====
+
+//-----Object-----
+Audio PCM5102;
+NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
+//======Object======
+
+//-----Func_init-----
 void play();
 void get_conf();
 void rest();
+//=====Func_init=====
+
+//-----MultiCore-----
+// TaskHandle_t Task1;
+// TaskHandle_t Task2;
+// void Task1code(void *pvParameters);
+// void Task2code(void *pvParameters);
+//=====MultiCore=====
 
 //-----Standart-----
 void setup()
@@ -158,8 +213,8 @@ void setup()
     if (!Serial) ERR();
 #endif
 
-    pinMode(RST_pin, OUTPUT);
-    digitalWrite(RST_pin, 1);
+    // pinMode(RST_pin, OUTPUT);
+    // digitalWrite(RST_pin, 1);
 
 #ifdef LED
     FastLED.addLeds<WS2812, LED_pin, GRB>(leds, LED_count);
@@ -168,7 +223,7 @@ void setup()
 
     if (!SD.begin(SD_cs))
     {
-        ERR("ST dont init");
+        ERR("SD dont init");
     }
 
     get_conf();
@@ -178,7 +233,12 @@ void setup()
     PCM5102.setPinout(BCK, LCK, DIN);
     PCM5102.setVolume(_volume);
 
-    LED_ON(Cols.success);
+    // xTaskCreatePinnedToCore(Task1code, "Task1", 10000, NULL, 1, &Task1, 0);
+    // delay(500);
+    // xTaskCreatePinnedToCore(Task2code, "Task2", 10000, NULL, 1, &Task2, 1);
+    // delay(500);
+
+    LED_ON(_cols.success);
 }
 
 void loop()
@@ -198,29 +258,59 @@ void loop()
     //     }
     // #endif
 
-#ifdef LED
-    if (leds[0].r + leds[0].g + leds[0].b != 0)
-    {
-        if (millis() - global_timer >= 1000)
-        {
-            LED_ON("0x000000");
-        }
-    }
-#endif
-
-    if (Serial.available())
-    {
-        String key = Serial.readString();
-        BT_WRITE(key);
-    }
     if (BT_massage.length() != 0)
     {
-        Serial.println(BT_massage);
+        if (BT_massage == "play")
+        {
+            play();
+        }
+        // if (BT_massage == "restart")
+        // {
+        //     rest();
+        // }
         BT_massage = "";
     }
-    BT_CNCT();
-    BT_DCNCT();
+    BT_USR_STATUS();
+
+    // uint16_t dist = US_sensor.ping_cm();
+    //
+    // if (dist < Trig_dist && !Trig_flag)
+    // {
+    //     global_timer = millis();
+    //     Trig_flag = true;
+    //     char massage[32];
+    //     sprintf(massage, "1: %d", dist);
+    //     Serial.println(massage);
+    // }
+    // else if (dist < Trig_dist && Trig_dist && millis() - global_timer >= Trig_lag)
+    // {
+    //     Trig_flag = false;
+    //     char massage[32];
+    //     sprintf(massage, "2: %d", dist);
+    //     Serial.println(massage);
+    //     play();
+    // }
+    // else if (dist > Trig_dist && Trig_flag && millis() - global_timer >= Trig_lag)
+    // {
+    //     Trig_flag = false;
+    //     char massage[32];
+    //     sprintf(massage, "3: %d", dist);
+    //     Serial.println(massage);
+    // }
+
+    LED_LAG();
 }
+//=====Standart=====
+
+//-----TaskFunc-----
+// void Task1code(void *pvParameters)
+// {
+// }
+//
+// void Task2code(void *pvParameters)
+// {
+// }
+//=====TaskFunc=====
 
 //-----Func_impl-----
 #ifdef LED
@@ -230,6 +320,17 @@ void led_on(String hex_code)
     FastLED.show();
     global_timer = millis();
 }
+
+void led_lag_off()
+{
+    if (leds[0].r + leds[0].g + leds[0].b != 0)
+    {
+        if (millis() - global_timer >= 1000)
+        {
+            LED_ON("0x000000");
+        }
+    }
+}
 #endif
 
 #ifdef UART
@@ -237,9 +338,9 @@ void error404(String error_massage)
 {
     if (error_massage != "")
     {
-        Serial.println(error_massage);
+        UART_PRINT(error_massage);
     }
-    LED_ON(Cols.err);
+    LED_ON(_cols.err);
     while (true);
 }
 #endif
@@ -252,7 +353,7 @@ void get_conf()
         ERR("File not init");
     }
 
-    Json_error = deserializeJson(Json_conf, Json);
+    Json_error = deserializeJson(config, Json);
 
     Json.close();
 
@@ -264,14 +365,14 @@ void get_conf()
     }
 
 #ifdef LED
-    JsonObject cols = Json_conf["Led_colors"];
-    Cols.err = cols["Error"].as<String>();
-    Cols.success = cols["Successful"].as<String>();
-    Cols.play = cols["Play"].as<String>();
-    Cols.restart = cols["Restart"].as<String>();
+    JsonObject cols = config["Led_colors"];
+    _cols.err = cols["Error"].as<String>();
+    _cols.success = cols["Successful"].as<String>();
+    _cols.play = cols["Play"].as<String>();
+    _cols.restart = cols["Restart"].as<String>();
 #endif
 
-    _volume = Json_conf["Volume"];
+    _volume = config["Volume"];
 }
 
 #ifdef BT
@@ -279,44 +380,37 @@ void BT_init()
 {
     BLEDevice::init(BT_name);
 
-    BLESecurity *pSecurity = new BLESecurity();
-    pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
-    pSecurity->setCapability(ESP_IO_CAP_OUT);  // клиент вводит PIN
-    pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-    pSecurity->setKeySize(16);
-    pSecurity->setStaticPIN(123456);  // <-- PIN-код
+    BLESecurity *BT_security = new BLESecurity();
+    BT_security->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
+    BT_security->setCapability(ESP_IO_CAP_OUT);
+    BT_security->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+    BT_security->setKeySize(16);
+    BT_security->setStaticPIN(BT_pass);
 
-    pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new MyServerCallbacks());
+    BT_server = BLEDevice::createServer();
+    BT_server->setCallbacks(new MyServerCallbacks());
 
-    BLEService *pService = pServer->createService(SERVICE_UUID);
+    BLEService *BT_service;
+    BT_service = BT_server->createService(SERVICE_UUID);
+    BT_tx_chrctrstc = BT_service->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY);
+    BT_tx_chrctrstc->addDescriptor(new BLE2902());
 
-    // Характеристика TX — ESP32 → BLE клиент (NOTIFY)
-    pTxCharacteristic =
-        pService->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY);
-    pTxCharacteristic->addDescriptor(new BLE2902());
+    BLECharacteristic *BT_rx_chrctrstc = BT_service->createCharacteristic(CHARACTERISTIC_UUID_RX, BLECharacteristic::PROPERTY_WRITE);
+    BT_rx_chrctrstc->setCallbacks(new MyCallbacks());
 
-    // Характеристика RX — BLE клиент → ESP32(WRITE)
-    BLECharacteristic *pRxCharacteristic =
-        pService->createCharacteristic(CHARACTERISTIC_UUID_RX, BLECharacteristic::PROPERTY_WRITE);
-    pRxCharacteristic->setCallbacks(new MyCallbacks());
-
-    pService->start();
-    pServer->getAdvertising()->start();
+    BT_service->start();
+    BT_server->getAdvertising()->start();
 }
 
-void BT_connect()
+void BT_user_status()
 {
-    if (deviceConnected && !oldDeviceConnected)
+    if (connect_status && !old_connect_status)
     {
         UART_PRINT("BLE client connected");
-        oldDeviceConnected = deviceConnected;
+        old_connect_status = connect_status;
     }
-}
 
-void BT_disconnect()
-{
-    if (!deviceConnected && oldDeviceConnected)
+    if (!connect_status && old_connect_status)
     {
         if (!BT_flag)
         {
@@ -325,9 +419,9 @@ void BT_disconnect()
         }
         else if (millis() - global_timer >= 500)
         {
-            pServer->startAdvertising();
+            BT_server->startAdvertising();
             UART_PRINT("BLE client disconnected. Start advertising...");
-            oldDeviceConnected = deviceConnected;
+            old_connect_status = connect_status;
         }
     }
 }
@@ -335,14 +429,14 @@ void BT_disconnect()
 template <typename T>
 void Write_to_BT(T msg)
 {
-    if (deviceConnected)
+    if (connect_status)
     {
         String input = (String)msg;
 
         if (input.length() > 0)
         {
-            pTxCharacteristic->setValue(input.c_str());
-            pTxCharacteristic->notify();
+            BT_tx_chrctrstc->setValue(input.c_str());
+            BT_tx_chrctrstc->notify();
         }
     }
 }
@@ -355,7 +449,7 @@ void play()
     bool dur_stat = false;
 
     PCM5102.connecttoFS(SD, "/test.mp3");
-    LED_ON(Cols.play);
+    LED_ON(_cols.play);
     while (status)
     {
         PCM5102.loop();
@@ -382,13 +476,21 @@ void play()
                 status = false;
             }
         }
+        if (BT_massage.length() != 0)
+        {
+            if (BT_massage == "stop")
+            {
+                status = false;
+            }
+        }
     }
 }
 
-void rest()
-{
-    UART_PRINT("Restarting");
-    LED_ON(Cols.restart);
-    delay(1000);
-    digitalWrite(RST_pin, 0);
-}
+// void rest()
+// {
+//     UART_PRINT("Restarting");
+//     LED_ON(_cols.restart);
+//     delay(1000);
+//     digitalWrite(RST_pin, 0);
+// }
+//=====Func_impl=====
