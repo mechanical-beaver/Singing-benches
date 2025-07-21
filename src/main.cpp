@@ -185,6 +185,7 @@ void error404(String error_massage = "");
 //-----Other_var-----
 uint32_t global_timer;
 bool Trig_flag = false;
+bool Play_flag = false;
 //=====Other_var=====
 
 //-----Object-----
@@ -193,16 +194,15 @@ NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 //======Object======
 
 //-----Func_init-----
-void play();
 void get_conf();
 void rest();
 //=====Func_init=====
 
 //-----MultiCore-----
-// TaskHandle_t Task1;
-// TaskHandle_t Task2;
-// void Task1code(void *pvParameters);
-// void Task2code(void *pvParameters);
+TaskHandle_t Task1;
+TaskHandle_t Task2;
+void Task1code(void *pvParameters);
+void Task2code(void *pvParameters);
 //=====MultiCore=====
 
 //-----Standart-----
@@ -233,45 +233,16 @@ void setup()
     PCM5102.setPinout(BCK, LCK, DIN);
     PCM5102.setVolume(_volume);
 
-    // xTaskCreatePinnedToCore(Task1code, "Task1", 10000, NULL, 1, &Task1, 0);
-    // delay(500);
-    // xTaskCreatePinnedToCore(Task2code, "Task2", 10000, NULL, 1, &Task2, 1);
-    // delay(500);
+    xTaskCreatePinnedToCore(Task1code, "Task1", 30000, NULL, 1, &Task1, 0);
+    delay(500);
+    xTaskCreatePinnedToCore(Task2code, "Task2", 10000, NULL, 1, &Task2, 1);
+    delay(500);
 
     LED_ON(_cols.success);
 }
 
 void loop()
 {
-    // #ifdef UART
-    //     if (Serial.available())
-    //     {
-    //         String key = Serial.readString();
-    //         if (key == "play")
-    //         {
-    //             play();
-    //         }
-    //         else if (key == "restart")
-    //         {
-    //             rest();
-    //         }
-    //     }
-    // #endif
-
-    if (BT_massage.length() != 0)
-    {
-        if (BT_massage == "play")
-        {
-            play();
-        }
-        // if (BT_massage == "restart")
-        // {
-        //     rest();
-        // }
-        BT_massage = "";
-    }
-    BT_USR_STATUS();
-
     // uint16_t dist = US_sensor.ping_cm();
     //
     // if (dist < Trig_dist && !Trig_flag)
@@ -297,19 +268,86 @@ void loop()
     //     sprintf(massage, "3: %d", dist);
     //     Serial.println(massage);
     // }
-
-    LED_LAG();
 }
 //=====Standart=====
 
 //-----TaskFunc-----
-// void Task1code(void *pvParameters)
-// {
-// }
-//
-// void Task2code(void *pvParameters)
-// {
-// }
+void Task1code(void *pvParameters)
+{
+    String core0msg;
+    for (;;)
+    {
+#ifdef BT
+        if (BT_massage.length() != 0)
+        {
+            core0msg = BT_massage;
+        }
+#endif
+
+#ifdef UART
+        if (Serial.available())
+        {
+            core0msg = Serial.readString();
+        }
+#endif
+
+        if (core0msg.length() != 0)
+        {
+            if (core0msg == "play")
+            {
+                Play_flag = true;
+                LED_ON(_cols.play);
+            }
+            else if (core0msg == "stop")
+            {
+                Play_flag = false;
+            }
+            core0msg = "";
+        }
+
+        BT_massage = "";
+        BT_USR_STATUS();
+        if (!Play_flag)
+        {
+            LED_LAG();
+        }
+        vTaskDelay(50);
+    }
+}
+
+void Task2code(void *pvParameters)
+{
+    for (;;)
+    {
+        if (Play_flag)
+        {
+            UART_PRINT("Core 1: Play");
+            uint32_t duration;
+            bool dur_stat = false;
+
+            PCM5102.connecttoFS(SD, "/test.mp3");
+            while (Play_flag)
+            {
+                PCM5102.loop();
+
+                if (!dur_stat)
+                {
+                    if (PCM5102.getAudioFileDuration() != 0)
+                    {
+                        duration = PCM5102.getAudioFileDuration() + 1;
+                        dur_stat = true;
+                    }
+                }
+
+                if (dur_stat && duration == PCM5102.getAudioCurrentTime())
+                {
+                    Play_flag = false;
+                }
+            }
+        }
+        vTaskDelay(50);
+    }
+}
 //=====TaskFunc=====
 
 //-----Func_impl-----
@@ -365,14 +403,17 @@ void get_conf()
     }
 
 #ifdef LED
-    JsonObject cols = config["Led_colors"];
-    _cols.err = cols["Error"].as<String>();
-    _cols.success = cols["Successful"].as<String>();
-    _cols.play = cols["Play"].as<String>();
-    _cols.restart = cols["Restart"].as<String>();
+    JsonObject cols = config["LED"];
+    _cols.err = cols["error"].as<String>();
+    _cols.success = cols["successful"].as<String>();
+    _cols.play = cols["play"].as<String>();
+    _cols.restart = cols["restart"].as<String>();
 #endif
 
-    _volume = config["Volume"];
+#ifdef BT
+    JsonObject bt = config[""]
+#endif
+        _volume = config["Volume"];
 }
 
 #ifdef BT
@@ -441,50 +482,6 @@ void Write_to_BT(T msg)
     }
 }
 #endif
-
-void play()
-{
-    bool status = true;
-    uint32_t duration;
-    bool dur_stat = false;
-
-    PCM5102.connecttoFS(SD, "/test.mp3");
-    LED_ON(_cols.play);
-    while (status)
-    {
-        PCM5102.loop();
-
-        if (!dur_stat)
-        {
-            if (PCM5102.getAudioFileDuration() != 0)
-            {
-                duration = PCM5102.getAudioFileDuration() + 1;
-                dur_stat = true;
-            }
-        }
-
-        if (dur_stat && duration == PCM5102.getAudioCurrentTime())
-        {
-            status = false;
-        }
-
-        if (Serial.available())
-        {
-            String key = Serial.readString();
-            if (key == "stop")
-            {
-                status = false;
-            }
-        }
-        if (BT_massage.length() != 0)
-        {
-            if (BT_massage == "stop")
-            {
-                status = false;
-            }
-        }
-    }
-}
 
 // void rest()
 // {
