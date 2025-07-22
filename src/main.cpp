@@ -53,6 +53,7 @@
 //  MISO 13
 //  SCK 12
 //  MOSI 11
+#define SD_cs 10
 
 // US_sensor
 #define US_TRIG_pin 17
@@ -60,19 +61,11 @@
 
 // Other
 #define LED_pin 48
-#define SD_cs 10
 //=====Pins=====
 
 //-----OtherDefine-----
 #define LED_count 1
-// #define BT_name "ESP32_Test"
-// #define BT_pass 123456
-// #define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-// #define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-// #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 #define US_max_dist 300
-#define Trig_dist 100
-#define Trig_lag 2000
 //=====OtherDefine=====
 
 //-----Json_var-----
@@ -196,7 +189,8 @@ NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 
 //-----Func_init-----
 void get_conf();
-void rest();
+void volume_change(bool direction);
+// void rest();
 //=====Func_init=====
 
 //-----MultiCore-----
@@ -244,31 +238,6 @@ void setup()
 
 void loop()
 {
-    // uint16_t dist = US_sensor.ping_cm();
-    //
-    // if (dist < Trig_dist && !Trig_flag)
-    // {
-    //     global_timer = millis();
-    //     Trig_flag = true;
-    //     char massage[32];
-    //     sprintf(massage, "1: %d", dist);
-    //     Serial.println(massage);
-    // }
-    // else if (dist < Trig_dist && Trig_dist && millis() - global_timer >= Trig_lag)
-    // {
-    //     Trig_flag = false;
-    //     char massage[32];
-    //     sprintf(massage, "2: %d", dist);
-    //     Serial.println(massage);
-    //     play();
-    // }
-    // else if (dist > Trig_dist && Trig_flag && millis() - global_timer >= Trig_lag)
-    // {
-    //     Trig_flag = false;
-    //     char massage[32];
-    //     sprintf(massage, "3: %d", dist);
-    //     Serial.println(massage);
-    // }
 }
 //=====Standart=====
 
@@ -276,6 +245,11 @@ void loop()
 void Task1code(void *pvParameters)
 {
     String core0msg;
+    uint32_t old_millis;
+    bool dist_lag = false;
+    const uint8_t meas_lag = 250;
+    uint16_t dist;
+
     for (;;)
     {
 #ifdef BT
@@ -297,13 +271,50 @@ void Task1code(void *pvParameters)
             if (core0msg == "play")
             {
                 Play_flag = true;
-                LED_ON(_cols.play);
             }
             else if (core0msg == "stop")
             {
                 Play_flag = false;
             }
+            else if (core0msg == "v+")
+            {
+                volume_change(true);
+            }
+            else if (core0msg == "v-")
+            {
+                volume_change(false);
+            }
             core0msg = "";
+        }
+
+        if (!Play_flag)
+        {
+            if (!dist_lag)
+            {
+                old_millis = millis();
+                dist = US_sensor.ping_cm();
+                dist_lag = true;
+            }
+
+            if (dist < _trig_dist && !Trig_flag)
+            {
+                global_timer = millis();
+                Trig_flag = true;
+            }
+            else if (dist < _trig_dist && Trig_flag && millis() - global_timer >= _trig_lag)
+            {
+                Trig_flag = false;
+                Play_flag = true;
+            }
+            else if (dist > _trig_dist && Trig_flag && millis() - global_timer >= _trig_lag)
+            {
+                Trig_flag = false;
+            }
+
+            if (dist_lag && millis() - old_millis >= meas_lag)
+            {
+                dist_lag = false;
+            }
         }
 
         BT_massage = "";
@@ -312,7 +323,7 @@ void Task1code(void *pvParameters)
         {
             LED_LAG();
         }
-        vTaskDelay(50);
+        vTaskDelay(1);
     }
 }
 
@@ -327,6 +338,8 @@ void Task2code(void *pvParameters)
             bool dur_stat = false;
 
             PCM5102.connecttoFS(SD, "/test.mp3");
+            LED_ON(_cols.play);
+
             while (Play_flag)
             {
                 PCM5102.loop();
@@ -346,7 +359,7 @@ void Task2code(void *pvParameters)
                 }
             }
         }
-        vTaskDelay(50);
+        vTaskDelay(1);
     }
 }
 //=====TaskFunc=====
@@ -424,6 +437,21 @@ void get_conf()
     _trig_lag = config["US"]["trig_lag"];
 
     _volume = config["DAC"]["volume"];
+}
+
+void volume_change(bool direction)
+{
+    if (direction)
+        _volume++;
+    else if (!direction)
+        _volume--;
+
+    if (_volume > 21)
+        _volume = 21;
+    else if (_volume < 0)
+        _volume = 0;
+
+    PCM5102.setVolume(_volume);
 }
 
 #ifdef BT
