@@ -198,7 +198,7 @@ void get_info(char ft);
 void volume_change(bool direction);
 void trig_param_change(char param);
 void change_json();
-// void rest();
+void restart();
 //=====Func_init=====
 
 //-----MultiCore-----
@@ -311,6 +311,10 @@ void Task1code(void *pvParameters)
             else if (core0msg == "lag")
             {
                 trig_param_change('L');
+            }
+            else if (core0msg == "rest")
+            {
+                restart();
             }
             else
             {
@@ -459,7 +463,7 @@ void get_conf()
     _cols.err = config["LED"]["error"].as<String>();
     _cols.success = config["LED"]["successful"].as<String>();
     _cols.play = config["LED"]["play"].as<String>();
-    _cols.restart = config["LED"]["restart"].as<String>();
+    _cols.restart = config["LED"]["rest"].as<String>();
 #endif
 
 #ifdef BT
@@ -588,6 +592,13 @@ void change_json()
     }
 
     Json.close();
+}
+
+void restart()
+{
+    LED_ON(_cols.restart);
+    delay(1000);
+    ESP.restart();
 }
 
 #ifdef BT
