@@ -28,6 +28,7 @@
 #include "esp32-hal-bt.h"
 #include "esp32-hal-gpio.h"
 #include "esp32-hal.h"
+#include "fastspi_types.h"
 #include "fl/str.h"
 #include "pgmspace.h"
 //=====Dependents=====
@@ -191,9 +192,11 @@ NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 //======Object======
 
 //-----Func_init-----
+void echo(String msg);
 void get_conf();
 void get_info(char ft);
 void volume_change(bool direction);
+void trig_param_change(char param);
 void change_json();
 // void rest();
 //=====Func_init=====
@@ -301,6 +304,17 @@ void Task1code(void *pvParameters)
             {
                 change_json();
             }
+            else if (core0msg == "dist")
+            {
+                trig_param_change('D');
+            }
+            else if (core0msg == "lag")
+            {
+                trig_param_change('L');
+            }
+            else
+            {
+            }
             core0msg = "";
         }
 
@@ -353,7 +367,6 @@ void Task2code(void *pvParameters)
     {
         if (Play_flag)
         {
-            UART_PRINT("Core 1: Play");
             uint32_t duration;
             bool dur_stat = false;
 
@@ -385,6 +398,12 @@ void Task2code(void *pvParameters)
 //=====TaskFunc=====
 
 //-----Func_impl-----
+void echo(String msg)
+{
+    UART_PRINT("\n" + msg);
+    BT_WRITE("\n" + msg);
+}
+
 #ifdef LED
 void led_on(String hex_code)
 {
@@ -461,6 +480,7 @@ void get_conf()
 void get_info(char ft)
 {
     File file;
+    String message;
 
     if (ft == 'I')
     {
@@ -468,15 +488,13 @@ void get_info(char ft)
 
         if (!file)
         {
-            BT_WRITE("File not init");
-            UART_PRINT("File not init");
+            echo("File not init");
         }
 
         while (file.available())
         {
-            String message = file.readString();
-            BT_WRITE(message);
-            UART_PRINT(message);
+            message = file.readString();
+            echo(message);
         }
 
         file.close();
@@ -484,12 +502,10 @@ void get_info(char ft)
 
     else if (ft == 'J')
     {
-        String message;
         message += config["DAC"].as<String>();
         message += "\n";
         message += config["US"].as<String>();
-        BT_WRITE(message);
-        UART_PRINT(message);
+        echo(message);
     }
 }
 
@@ -508,6 +524,50 @@ void volume_change(bool direction)
     PCM5102.setVolume(_volume);
 }
 
+void trig_param_change(char param)
+{
+    echo("Send value");
+    global_timer = millis();
+    bool state = false;
+    uint16_t value = 65535;
+    while (!state)
+    {
+        if (BT_massage.length() > 0 && BT_massage != "dist" && BT_massage != "lag")
+        {
+            value = BT_massage.toInt();
+            Serial.println(BT_massage);
+            Serial.println(value);
+        }
+        else if (Serial.available())
+        {
+            value = Serial.parseInt();
+        }
+
+        if (millis() - global_timer >= 3000 || value != 65535)
+        {
+            state = true;
+        }
+    }
+
+    if (value == 65535)
+    {
+        echo("Value not received");
+        return;
+    }
+
+    if (param == 'L')
+    {
+        _trig_lag = value;
+    }
+    if (param == 'D')
+    {
+        if (value > US_max_dist) value = US_max_dist;
+        if (value < 20) value = 20;
+
+        _trig_dist = value;
+    }
+}
+
 void change_json()
 {
     SD.remove(Json_path);
@@ -515,8 +575,7 @@ void change_json()
     File Json = SD.open(Json_path, FILE_WRITE);
     if (!Json)
     {
-        UART_PRINT("File not init");
-        BT_WRITE("File not init");
+        echo("File not init");
     }
 
     config["US"]["trig_dist"] = _trig_dist;
@@ -525,8 +584,7 @@ void change_json()
 
     if (serializeJson(config, Json) == 0)
     {
-        UART_PRINT("failed");
-        BT_WRITE("failed");
+        echo("failed");
     }
 
     Json.close();
