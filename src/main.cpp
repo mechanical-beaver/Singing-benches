@@ -17,10 +17,12 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "ArduinoJson/Misc/SerializedValue.hpp"
 #include "ArduinoJson/Object/JsonObject.hpp"
 #include "BLECharacteristic.h"
 #include "BLESecurity.h"
 // #include "BLEUUID.h"
+#include "FS.h"
 #include "HardwareSerial.h"
 #include "WString.h"
 #include "esp32-hal-bt.h"
@@ -192,6 +194,7 @@ NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 void get_conf();
 void get_info(char ft);
 void volume_change(bool direction);
+void change_json();
 // void rest();
 //=====Func_init=====
 
@@ -293,6 +296,10 @@ void Task1code(void *pvParameters)
             else if (core0msg == "json")
             {
                 get_info('J');
+            }
+            else if (core0msg == "save")
+            {
+                change_json();
             }
             core0msg = "";
         }
@@ -499,6 +506,30 @@ void volume_change(bool direction)
         _volume = 0;
 
     PCM5102.setVolume(_volume);
+}
+
+void change_json()
+{
+    SD.remove(Json_path);
+
+    File Json = SD.open(Json_path, FILE_WRITE);
+    if (!Json)
+    {
+        UART_PRINT("File not init");
+        BT_WRITE("File not init");
+    }
+
+    config["US"]["trig_dist"] = _trig_dist;
+    config["US"]["trig_lag"] = _trig_lag;
+    config["DAC"]["volume"] = _volume;
+
+    if (serializeJson(config, Json) == 0)
+    {
+        UART_PRINT("failed");
+        BT_WRITE("failed");
+    }
+
+    Json.close();
 }
 
 #ifdef BT
