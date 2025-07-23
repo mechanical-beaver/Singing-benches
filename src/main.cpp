@@ -69,15 +69,16 @@
 //=====OtherDefine=====
 
 //-----Json_var-----
-File Json;
-const char *Json_name = "/config.json";
 JsonDocument config;
-DeserializationError Json_error;
 //=====Json_var=====
+
+//-----Path-----
+const char *Json_path = "/config.json";
+const char *info_path = "/info.txt";
+//=====Path=====
 
 //-----JsonData-----
 uint8_t _volume;
-uint16_t _max_dist;
 uint16_t _trig_dist;
 uint32_t _trig_lag;
 //=====JsonData=====
@@ -189,6 +190,7 @@ NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 
 //-----Func_init-----
 void get_conf();
+void get_info(char ft);
 void volume_change(bool direction);
 // void rest();
 //=====Func_init=====
@@ -284,6 +286,14 @@ void Task1code(void *pvParameters)
             {
                 volume_change(false);
             }
+            else if (core0msg == "info")
+            {
+                get_info('I');
+            }
+            else if (core0msg == "json")
+            {
+                get_info('J');
+            }
             core0msg = "";
         }
 
@@ -294,6 +304,9 @@ void Task1code(void *pvParameters)
                 old_millis = millis();
                 dist = US_sensor.ping_cm();
                 dist_lag = true;
+
+                // СДЕЛАТЬ ОБРАБОТКУ ОБРЫВА ДАТЧИКА
+                // Serial.println(dist);
             }
 
             if (dist < _trig_dist && !Trig_flag)
@@ -399,13 +412,13 @@ void error404(String error_massage)
 
 void get_conf()
 {
-    Json = SD.open(Json_name);
+    File Json = SD.open(Json_path);
     if (!Json)
     {
         ERR("File not init");
     }
 
-    Json_error = deserializeJson(config, Json);
+    DeserializationError Json_error = deserializeJson(config, Json);
 
     Json.close();
 
@@ -432,11 +445,45 @@ void get_conf()
     strncpy(_bt_uuid.rx, config["BT"]["UUID"]["chrctrstc_rx"], sizeof(_bt_uuid.rx));
 #endif
 
-    _max_dist = config["US"]["max_dist"];
     _trig_dist = config["US"]["trig_dist"];
     _trig_lag = config["US"]["trig_lag"];
 
     _volume = config["DAC"]["volume"];
+}
+
+void get_info(char ft)
+{
+    File file;
+
+    if (ft == 'I')
+    {
+        file = SD.open(info_path);
+
+        if (!file)
+        {
+            BT_WRITE("File not init");
+            UART_PRINT("File not init");
+        }
+
+        while (file.available())
+        {
+            String message = file.readString();
+            BT_WRITE(message);
+            UART_PRINT(message);
+        }
+
+        file.close();
+    }
+
+    else if (ft == 'J')
+    {
+        String message;
+        message += config["DAC"].as<String>();
+        message += "\n";
+        message += config["US"].as<String>();
+        BT_WRITE(message);
+        UART_PRINT(message);
+    }
 }
 
 void volume_change(bool direction)

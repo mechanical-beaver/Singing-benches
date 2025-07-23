@@ -23,7 +23,6 @@
     },
     "US":
     {
-        "max_dist": 300,
         "trig_dist": 50,
         "trig_lag": 2000
     }
