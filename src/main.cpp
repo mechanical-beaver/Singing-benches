@@ -1,13 +1,6 @@
 //-----Lib-----
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <Audio.h>
-#include <BLE2902.h>
-#include <BLE2904.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <FastLED.h>
 #include <NewPing.h>
 #include <SD.h>
 //=====Lib=====
@@ -17,18 +10,12 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "ArduinoJson/Misc/SerializedValue.hpp"
-#include "ArduinoJson/Object/JsonObject.hpp"
-#include "BLECharacteristic.h"
-#include "BLESecurity.h"
-// #include "BLEUUID.h"
 #include "FS.h"
 #include "HardwareSerial.h"
 #include "WString.h"
 #include "esp32-hal-bt.h"
 #include "esp32-hal-gpio.h"
 #include "esp32-hal.h"
-#include "fastspi_types.h"
 #include "fl/str.h"
 #include "pgmspace.h"
 //=====Dependents=====
@@ -37,9 +24,11 @@
 #define SD_Card
 #define SPIFFS
 
-#define BT
+// #define JSON
+
+// #define BT
 #define UART
-#define LED
+// #define LED
 //=====Mode=====
 
 //-----Pins-----
@@ -48,19 +37,26 @@
 // BCLK - bit clock                              // BCK
 // WS - Word Select = LRCLK - left rigth clock   // LCK
 // Dout                                          // DIN
-#define BCK 4
-#define LCK 6
-#define DIN 5
+// #define BCK 4
+// #define LCK 6
+// #define DIN 5
+#define BCK 27
+#define LCK 25
+#define DIN 26
 
 // SPI_CD
-//  MISO 13
-//  SCK 12
-//  MOSI 11
-#define SD_cs 10
+// Pins // ESP32 // ESP32-S3 //
+// MISO //  19   //   13     //
+// SCK  //  18   //   12     //
+// MOSI //  23   //   11     //
+// CS   //  5    //   10     //
+#define SD_cs 5
 
 // US_sensor
-#define US_TRIG_pin 17
-#define US_ECHO_pin 18
+// #define US_TRIG_pin 17
+// #define US_ECHO_pin 18
+#define US_TRIG_pin 16
+#define US_ECHO_pin 17
 
 // Other
 #define LED_pin 48
@@ -71,23 +67,45 @@
 #define US_max_dist 300
 //=====OtherDefine=====
 
-//-----Json_var-----
+//-----Json-----
+#ifdef JSON
+#include <ArduinoJson.h>
+
+#include "ArduinoJson/Misc/SerializedValue.hpp"
+#include "ArduinoJson/Object/JsonObject.hpp"
+
 JsonDocument config;
-//=====Json_var=====
-
-//-----Path-----
 const char *Json_path = "/config.json";
-const char *info_path = "/info.txt";
-//=====Path=====
 
-//-----JsonData-----
 uint8_t _volume;
 uint16_t _trig_dist;
 uint32_t _trig_lag;
-//=====JsonData=====
+
+void get_conf();
+void change_json();
+
+#define GET_CONF() get_conf()
+#define CHANGE_JSON() change_json()
+#else
+uint8_t _volume = 5;
+uint16_t _trig_dist = 100;
+uint32_t _trig_lag = 1000;
+
+#define GET_CONF() ((void)0)
+#define CHANGE_JSON() ((void)0)
+#endif
+//=====Json=====
+
+//-----Path-----
+const char *info_path = "/info.txt";
+//=====Path=====
 
 //-----Leds-----
 #ifdef LED
+#include <FastLED.h>
+
+#include "fastspi_types.h"
+
 CRGB leds[LED_count];
 
 struct colors
@@ -106,12 +124,22 @@ void led_lag_off();
 #define LED_LAG() led_lag_off()
 #else
 #define LED_ON(hex) ((void)0)
-#define LELED_LAG() ((void)0)
+#define LED_LAG() ((void)0)
 #endif
 //=====Leds=====
 
 //-----BT-----
 #ifdef BT
+#include <BLE2902.h>
+#include <BLE2904.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+
+#include "BLECharacteristic.h"
+#include "BLESecurity.h"
+// #include "BLEUUID.h"
+
 BLEServer *BT_server = nullptr;
 BLECharacteristic *BT_tx_chrctrstc;
 bool connect_status = false;
@@ -193,11 +221,9 @@ NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 
 //-----Func_init-----
 void echo(String msg);
-void get_conf();
 void get_info(char ft);
 void volume_change(bool direction);
 void trig_param_change(char param);
-void change_json();
 void restart();
 //=====Func_init=====
 
@@ -216,9 +242,6 @@ void setup()
     if (!Serial) ERR();
 #endif
 
-    // pinMode(RST_pin, OUTPUT);
-    // digitalWrite(RST_pin, 1);
-
 #ifdef LED
     FastLED.addLeds<WS2812, LED_pin, GRB>(leds, LED_count);
     FastLED.setBrightness(100);
@@ -229,7 +252,7 @@ void setup()
         ERR("SD dont init");
     }
 
-    get_conf();
+    GET_CONF();
 
     BT_INIT();
 
@@ -250,7 +273,7 @@ void loop()
 //=====Standart=====
 
 //-----TaskFunc-----
-void Task1code(void *pvParameters)
+void Task2code(void *pvParameters)
 {
     String core0msg;
     uint32_t old_millis;
@@ -302,7 +325,7 @@ void Task1code(void *pvParameters)
             }
             else if (core0msg == "save")
             {
-                change_json();
+                CHANGE_JSON();
             }
             else if (core0msg == "dist")
             {
@@ -355,7 +378,9 @@ void Task1code(void *pvParameters)
             }
         }
 
+#ifdef BT
         BT_massage = "";
+#endif
         BT_USR_STATUS();
         if (!Play_flag)
         {
@@ -365,7 +390,7 @@ void Task1code(void *pvParameters)
     }
 }
 
-void Task2code(void *pvParameters)
+void Task1code(void *pvParameters)
 {
     for (;;)
     {
@@ -440,6 +465,7 @@ void error404(String error_massage)
 }
 #endif
 
+#ifdef JSON
 void get_conf()
 {
     File Json = SD.open(Json_path);
@@ -481,97 +507,6 @@ void get_conf()
     _volume = config["DAC"]["volume"];
 }
 
-void get_info(char ft)
-{
-    File file;
-    String message;
-
-    if (ft == 'I')
-    {
-        file = SD.open(info_path);
-
-        if (!file)
-        {
-            echo("File not init");
-        }
-
-        while (file.available())
-        {
-            message = file.readString();
-            echo(message);
-        }
-
-        file.close();
-    }
-
-    else if (ft == 'J')
-    {
-        message += config["DAC"].as<String>();
-        message += "\n";
-        message += config["US"].as<String>();
-        echo(message);
-    }
-}
-
-void volume_change(bool direction)
-{
-    if (direction)
-        _volume++;
-    else if (!direction)
-        _volume--;
-
-    if (_volume > 21)
-        _volume = 21;
-    else if (_volume < 0)
-        _volume = 0;
-
-    PCM5102.setVolume(_volume);
-}
-
-void trig_param_change(char param)
-{
-    echo("Send value");
-    global_timer = millis();
-    bool state = false;
-    uint16_t value = 65535;
-    while (!state)
-    {
-        if (BT_massage.length() > 0 && BT_massage != "dist" && BT_massage != "lag")
-        {
-            value = BT_massage.toInt();
-            Serial.println(BT_massage);
-            Serial.println(value);
-        }
-        else if (Serial.available())
-        {
-            value = Serial.parseInt();
-        }
-
-        if (millis() - global_timer >= 3000 || value != 65535)
-        {
-            state = true;
-        }
-    }
-
-    if (value == 65535)
-    {
-        echo("Value not received");
-        return;
-    }
-
-    if (param == 'L')
-    {
-        _trig_lag = value;
-    }
-    if (param == 'D')
-    {
-        if (value > US_max_dist) value = US_max_dist;
-        if (value < 20) value = 20;
-
-        _trig_dist = value;
-    }
-}
-
 void change_json()
 {
     SD.remove(Json_path);
@@ -593,13 +528,7 @@ void change_json()
 
     Json.close();
 }
-
-void restart()
-{
-    LED_ON(_cols.restart);
-    delay(1000);
-    ESP.restart();
-}
+#endif
 
 #ifdef BT
 void BT_init()
@@ -668,4 +597,107 @@ void Write_to_BT(T msg)
     }
 }
 #endif
+
+void get_info(char ft)
+{
+    File file;
+    String message;
+
+    if (ft == 'I')
+    {
+        file = SD.open(info_path);
+
+        if (!file)
+        {
+            echo("File not init");
+        }
+
+        while (file.available())
+        {
+            message = file.readString();
+            echo(message);
+        }
+
+        file.close();
+    }
+
+#ifdef JSON
+    else if (ft == 'J')
+    {
+        message += config["DAC"].as<String>();
+        message += "\n";
+        message += config["US"].as<String>();
+        echo(message);
+    }
+#endif
+}
+
+void volume_change(bool direction)
+{
+    if (direction)
+        _volume++;
+    else if (!direction)
+        _volume--;
+
+    if (_volume > 21)
+        _volume = 21;
+    else if (_volume < 0)
+        _volume = 0;
+
+    PCM5102.setVolume(_volume);
+}
+
+void trig_param_change(char param)
+{
+    echo("Send value");
+    global_timer = millis();
+    bool state = false;
+    uint16_t value = 65535;
+    while (!state)
+    {
+        if (Serial.available())
+        {
+            value = Serial.parseInt();
+        }
+#ifdef BT
+        else if (BT_massage.length() > 0 && BT_massage != "dist" && BT_massage != "lag")
+        {
+            value = BT_massage.toInt();
+            Serial.println(BT_massage);
+            Serial.println(value);
+        }
+#endif
+
+        if (millis() - global_timer >= 3000 || value != 65535)
+        {
+            state = true;
+        }
+    }
+
+    if (value == 65535)
+    {
+        echo("Value not received");
+        return;
+    }
+
+    if (param == 'L')
+    {
+        _trig_lag = value;
+    }
+    if (param == 'D')
+    {
+        if (value > US_max_dist) value = US_max_dist;
+        if (value < 20) value = 20;
+
+        _trig_dist = value;
+    }
+}
+
+void restart()
+{
+    LED_ON(_cols.restart);
+    delay(1000);
+    ESP.restart();
+}
+
 //=====Func_impl=====

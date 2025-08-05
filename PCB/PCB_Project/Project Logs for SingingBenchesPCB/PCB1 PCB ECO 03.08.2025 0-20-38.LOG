@@ -1,0 +1,6 @@
+Removed Pin From Net: NetName=NetJ16_2 Pin=PS1-1
+Removed Pin From Net: NetName=NetJ16_1 Pin=PS1-2
+Added Pin To Net: NetName=NetJ16_1 Pin=PS1-1
+Added Pin To Net: NetName=NetJ16_2 Pin=PS1-2
+Change Net Name : Old Net Name=24V New Net Name=+24
+Added Rule: Name=Schematic Supply Nets_4
