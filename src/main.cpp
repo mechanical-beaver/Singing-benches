@@ -24,11 +24,14 @@
 #define SD_Card
 #define SPIFFS
 
-// #define JSON
+#define JSON
 
-// #define BT
+#define BT
 #define UART
-// #define LED
+
+// #define US
+
+#define LED
 //=====Mode=====
 
 //-----Pins-----
@@ -37,12 +40,12 @@
 // BCLK - bit clock                              // BCK
 // WS - Word Select = LRCLK - left rigth clock   // LCK
 // Dout                                          // DIN
-// #define BCK 4
-// #define LCK 6
-// #define DIN 5
-#define BCK 27
-#define LCK 25
-#define DIN 26
+#define BCK 4
+#define LCK 6
+#define DIN 5
+// #define BCK 27
+// #define LCK 25
+// #define DIN 26
 
 // SPI_CD
 // Pins // ESP32 // ESP32-S3 //
@@ -50,22 +53,28 @@
 // SCK  //  18   //   12     //
 // MOSI //  23   //   11     //
 // CS   //  5    //   10     //
-#define SD_cs 5
-
-// US_sensor
-// #define US_TRIG_pin 17
-// #define US_ECHO_pin 18
-#define US_TRIG_pin 16
-#define US_ECHO_pin 17
-
-// Other
-#define LED_pin 48
+#define SD_cs 10
 //=====Pins=====
 
-//-----OtherDefine-----
-#define LED_count 1
+//-----US-----
+#ifdef US
+#define US_TRIG_pin 17
+#define US_ECHO_pin 18
+// #define US_TRIG_pin 16
+// #define US_ECHO_pin 17
+//
 #define US_max_dist 300
-//=====OtherDefine=====
+
+bool Trig_flag = false;
+
+NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
+
+void trig_param_change(char param);
+#define TRIG_CHANGE(par) trig_param_change(par)
+#else
+#define TRIG_CHANGE(par) ((void)0)
+#endif
+//=====US=====
 
 //-----Json-----
 #ifdef JSON
@@ -96,15 +105,14 @@ uint32_t _trig_lag = 1000;
 #endif
 //=====Json=====
 
-//-----Path-----
-const char *info_path = "/info.txt";
-//=====Path=====
-
 //-----Leds-----
 #ifdef LED
 #include <FastLED.h>
 
 #include "fastspi_types.h"
+
+#define LED_count 1
+#define LED_pin 48
 
 CRGB leds[LED_count];
 
@@ -208,23 +216,27 @@ void error404(String error_massage = "");
 #endif
 //=====UART=====
 
+//-----Path-----
+const char *info_path = "/info.txt";
+std::vector<String> songs;
+//=====Path=====
+
 //-----Other_var-----
 uint32_t global_timer;
-bool Trig_flag = false;
+uint8_t current_song;
 bool Play_flag = false;
 //=====Other_var=====
 
 //-----Object-----
 Audio PCM5102;
-NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);
 //======Object======
 
 //-----Func_init-----
 void echo(String msg);
 void get_info(char ft);
 void volume_change(bool direction);
-void trig_param_change(char param);
 void restart();
+void get_music_list(fs::FS &fs, const char *dirname);
 //=====Func_init=====
 
 //-----MultiCore-----
@@ -264,6 +276,8 @@ void setup()
     xTaskCreatePinnedToCore(Task2code, "Task2", 10000, NULL, 1, &Task2, 1);
     delay(500);
 
+    get_music_list(SD, "/music");
+
     LED_ON(_cols.success);
 }
 
@@ -301,6 +315,7 @@ void Task2code(void *pvParameters)
         {
             if (core0msg == "play")
             {
+                PCM5102.connecttoFS(SD, songs[current_song].c_str());
                 Play_flag = true;
             }
             else if (core0msg == "stop")
@@ -329,11 +344,11 @@ void Task2code(void *pvParameters)
             }
             else if (core0msg == "dist")
             {
-                trig_param_change('D');
+                TRIG_CHANGE('D');
             }
             else if (core0msg == "lag")
             {
-                trig_param_change('L');
+                TRIG_CHANGE('L');
             }
             else if (core0msg == "rest")
             {
@@ -345,6 +360,7 @@ void Task2code(void *pvParameters)
             core0msg = "";
         }
 
+#ifdef US
         if (!Play_flag)
         {
             if (!dist_lag)
@@ -377,6 +393,7 @@ void Task2code(void *pvParameters)
                 dist_lag = false;
             }
         }
+#endif
 
 #ifdef BT
         BT_massage = "";
@@ -390,7 +407,7 @@ void Task2code(void *pvParameters)
     }
 }
 
-void Task1code(void *pvParameters)
+void Task1code(void *zapvParameters)
 {
     for (;;)
     {
@@ -399,7 +416,6 @@ void Task1code(void *pvParameters)
             uint32_t duration;
             bool dur_stat = false;
 
-            PCM5102.connecttoFS(SD, "/test.mp3");
             LED_ON(_cols.play);
 
             while (Play_flag)
@@ -419,6 +435,12 @@ void Task1code(void *pvParameters)
                 {
                     Play_flag = false;
                 }
+            }
+            current_song++;
+
+            if (current_song > songs.size() - 1)
+            {
+                current_song = 0;
             }
         }
         vTaskDelay(1);
@@ -598,6 +620,87 @@ void Write_to_BT(T msg)
 }
 #endif
 
+#ifdef US
+void trig_param_change(char param)
+{
+    echo("Send value");
+    global_timer = millis();
+    bool state = false;
+    uint16_t value = 65535;
+    while (!state)
+    {
+        if (Serial.available())
+        {
+            value = Serial.parseInt();
+        }
+#ifdef BT
+        else if (BT_massage.length() > 0 && BT_massage != "dist" && BT_massage != "lag")
+        {
+            value = BT_massage.toInt();
+            Serial.println(BT_massage);
+            Serial.println(value);
+        }
+#endif
+
+        if (millis() - global_timer >= 3000 || value != 65535)
+        {
+            state = true;
+        }
+    }
+
+    if (value == 65535)
+    {
+        echo("Value not received");
+        return;
+    }
+
+    if (param == 'L')
+    {
+        _trig_lag = value;
+    }
+    if (param == 'D')
+    {
+        if (value > US_max_dist) value = US_max_dist;
+        if (value < 20) value = 20;
+
+        _trig_dist = value;
+    }
+}
+#endif
+
+void get_music_list(fs::FS &fs, const char *dirname)
+{
+    File root = fs.open(dirname);
+    if (!root)
+    {
+        echo("Failed open dir");
+        return;
+    }
+
+    if (!root.isDirectory())
+    {
+        echo("Not dir");
+        return;
+    }
+
+    File file = root.openNextFile();
+    while (file)
+    {
+        if (!file.isDirectory())
+        {
+            String filepath = String(file.path());
+
+            filepath.toLowerCase();
+
+            if (filepath.endsWith(".mp3"))
+            {
+                songs.push_back(filepath);
+            }
+        }
+        file = root.openNextFile();
+    }
+}
+
 void get_info(char ft)
 {
     File file;
@@ -647,57 +750,10 @@ void volume_change(bool direction)
     PCM5102.setVolume(_volume);
 }
 
-void trig_param_change(char param)
-{
-    echo("Send value");
-    global_timer = millis();
-    bool state = false;
-    uint16_t value = 65535;
-    while (!state)
-    {
-        if (Serial.available())
-        {
-            value = Serial.parseInt();
-        }
-#ifdef BT
-        else if (BT_massage.length() > 0 && BT_massage != "dist" && BT_massage != "lag")
-        {
-            value = BT_massage.toInt();
-            Serial.println(BT_massage);
-            Serial.println(value);
-        }
-#endif
-
-        if (millis() - global_timer >= 3000 || value != 65535)
-        {
-            state = true;
-        }
-    }
-
-    if (value == 65535)
-    {
-        echo("Value not received");
-        return;
-    }
-
-    if (param == 'L')
-    {
-        _trig_lag = value;
-    }
-    if (param == 'D')
-    {
-        if (value > US_max_dist) value = US_max_dist;
-        if (value < 20) value = 20;
-
-        _trig_dist = value;
-    }
-}
-
 void restart()
 {
     LED_ON(_cols.restart);
     delay(1000);
     ESP.restart();
 }
-
 //=====Func_impl=====
