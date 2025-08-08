@@ -1,0 +1,15 @@
+Change Component Designator: OldDesignator=J8 NewDesignator=J9
+Change Component Designator: OldDesignator=J9 NewDesignator=J8
+Change Component Designator: OldDesignator=J10 NewDesignator=J13
+Change Component Designator: OldDesignator=J11 NewDesignator=J12
+Change Component Designator: OldDesignator=J12 NewDesignator=J14
+Change Component Designator: OldDesignator=J13 NewDesignator=J15
+Change Component Designator: OldDesignator=J14 NewDesignator=J16
+Change Component Designator: OldDesignator=J16 NewDesignator=J17
+Change Component Designator: OldDesignator=J17 NewDesignator=J10
+Change Component Designator: OldDesignator=J18 NewDesignator=J11
+Change Net Name : Old Net Name=NetJ8_1 New Net Name=NetJ9_1
+Change Net Name : Old Net Name=NetJ16_1 New Net Name=NetJ17_1
+Change Net Name : Old Net Name=NetJ16_2 New Net Name=NetJ17_2
+Change Net Name : Old Net Name=NetJ17_1 New Net Name=NetJ10_1
+Added Member To Class: ClassName=ESP32S3 Member=Component C48 0.1uF

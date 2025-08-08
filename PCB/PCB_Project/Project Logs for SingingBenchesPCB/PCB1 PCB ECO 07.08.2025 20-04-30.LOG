@@ -1,0 +1,60 @@
+Added Component: Designator=U5(ESP32_S3_Wroom1)
+Add component (AddParameter): Name = "Category"; Value = "LDO"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "ComponentLink1Description"; Value = "https://datasheet.octopart.com/ESP32-S3-WROOM-1-N16R8-Espressif-Systems-datasheet-188867343.pdf?src-supplier=TME"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "ComponentLink1URL"; Value = "https://datasheet.octopart.com/ESP32-S3-WROOM-1-N16R8-Espressif-Systems-datasheet-188867343.pdf?src-supplier=TME"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Manufacturer"; Value = "Espressif Systems"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Manufacturer Part Number"; Value = "ESP32-S3-WROOM-1-N16R8"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Pricing"; Value = "1=6,71, 10=6,15, 50=5,6, 100=5,03, 1000=4,3, 10000=4,3 (USD)"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "RoHS"; Value = "No"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Supplier"; Value = "Mouser"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Supplier Part Number"; Value = "356-ESP32S3WRM1N16R8"; VariantName = "[No Variations]"
+Added Pin To Net: NetName=GND Pin=U5-1
+Added Pin To Net: NetName=+3.3 Pin=U5-2
+Added Pin To Net: NetName=Rest Pin=U5-3
+Added Pin To Net: NetName=NetR1_1 Pin=U5-4
+Added Pin To Net: NetName=NetR2_1 Pin=U5-5
+Added Pin To Net: NetName=NetR3_1 Pin=U5-6
+Added Pin To Net: NetName=IO7 Pin=U5-7
+Added Pin To Net: NetName=IO15 Pin=U5-8
+Added Pin To Net: NetName=IO16 Pin=U5-9
+Added Pin To Net: NetName=Trig Pin=U5-10
+Added Pin To Net: NetName=Echo Pin=U5-11
+Added Pin To Net: NetName=IO8 Pin=U5-12
+Added Pin To Net: NetName=IO19 Pin=U5-13
+Added Pin To Net: NetName=IO20 Pin=U5-14
+Added Pin To Net: NetName=IO3 Pin=U5-15
+Added Pin To Net: NetName=IO46 Pin=U5-16
+Added Pin To Net: NetName=IO9 Pin=U5-17
+Added Pin To Net: NetName=CS Pin=U5-18
+Added Pin To Net: NetName=MOSI Pin=U5-19
+Added Pin To Net: NetName=CLK Pin=U5-20
+Added Pin To Net: NetName=MISO Pin=U5-21
+Added Pin To Net: NetName=IO14 Pin=U5-22
+Added Pin To Net: NetName=IO21 Pin=U5-23
+Added Pin To Net: NetName=IO47 Pin=U5-24
+Added Pin To Net: NetName=IO45 Pin=U5-25
+Added Pin To Net: NetName=GPIO45 Pin=U5-26
+Added Pin To Net: NetName=Boot Pin=U5-27
+Added Pin To Net: NetName=IO35 Pin=U5-28
+Added Pin To Net: NetName=IO36 Pin=U5-29
+Added Pin To Net: NetName=IO37 Pin=U5-30
+Added Pin To Net: NetName=IO38 Pin=U5-31
+Added Pin To Net: NetName=IO39 Pin=U5-32
+Added Pin To Net: NetName=IO40 Pin=U5-33
+Added Pin To Net: NetName=IO41 Pin=U5-34
+Added Pin To Net: NetName=IO42 Pin=U5-35
+Added Pin To Net: NetName=RX Pin=U5-36
+Added Pin To Net: NetName=TX Pin=U5-37
+Added Pin To Net: NetName=IO2 Pin=U5-38
+Added Pin To Net: NetName=IO1 Pin=U5-39
+Added Pin To Net: NetName=GND Pin=U5-40
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Pin To Net: NetName=GND Pin=U5-41
+Added Member To Class: ClassName=ESP32S3 Member=Component U5 ESP32-S3-WROOM-1-N16R8

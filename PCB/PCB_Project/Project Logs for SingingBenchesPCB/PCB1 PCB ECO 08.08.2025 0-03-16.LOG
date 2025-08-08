@@ -1,0 +1,7 @@
+Added Component: Designator=C53(CAP: dip 1000uF 50V)
+Add component (AddParameter): Name = "Capacitance"; Value = "1000uF"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Voltage Rating (DC)"; Value = "50V"; VariantName = "[No Variations]"
+Added Pin To Net: NetName=+3.3 Pin=C53-1
+Added Pin To Net: NetName=GND Pin=C53-2
+Added Member To Class: ClassName=Power Member=Component C53 1000uF 50V
+Added Member To Class: ClassName=Power Member=Component U7 LM2576HVS-3.3

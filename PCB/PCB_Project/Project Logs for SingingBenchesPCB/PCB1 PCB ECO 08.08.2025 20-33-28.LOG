@@ -1,0 +1,5 @@
+Removed Pin From Net: NetName=NetJ17_2 Pin=PS1-1
+Removed Pin From Net: NetName=NetJ17_1 Pin=PS1-2
+Added Pin To Net: NetName=NetJ17_1 Pin=PS1-1
+Added Pin To Net: NetName=NetJ17_2 Pin=PS1-2
+Added Member To Class: ClassName=TPA3116D2 Member=Component C21 2.2uF

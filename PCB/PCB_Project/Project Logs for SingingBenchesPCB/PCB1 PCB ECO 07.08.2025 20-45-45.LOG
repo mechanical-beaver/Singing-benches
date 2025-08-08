@@ -1,0 +1,57 @@
+Added Component: Designator=J10(22 pins)
+Added Component: Designator=J12(22 pins)
+Added Pin To Net: NetName=GND Pin=J10-1
+Added Pin To Net: NetName=GND Pin=J10-2
+Added Pin To Net: NetName=+3.3 Pin=J10-3
+Added Pin To Net: NetName=+3.3 Pin=J10-4
+Added Pin To Net: NetName=Rest Pin=J10-5
+Added Pin To Net: NetName=IO7 Pin=J10-9
+Added Pin To Net: NetName=IO15 Pin=J10-10
+Added Pin To Net: NetName=IO16 Pin=J10-11
+Added Pin To Net: NetName=Trig Pin=J10-12
+Added Pin To Net: NetName=Echo Pin=J10-13
+Added Pin To Net: NetName=IO8 Pin=J10-14
+Added Pin To Net: NetName=IO19 Pin=J10-15
+Added Pin To Net: NetName=IO20 Pin=J10-16
+Added Pin To Net: NetName=IO3 Pin=J10-17
+Added Pin To Net: NetName=IO46 Pin=J10-18
+Added Pin To Net: NetName=IO9 Pin=J10-19
+Added Pin To Net: NetName=CS Pin=J10-20
+Added Pin To Net: NetName=MOSI Pin=J10-21
+Added Pin To Net: NetName=CLK Pin=J10-22
+Added Pin To Net: NetName=GND Pin=J12-1
+Added Pin To Net: NetName=GND Pin=J12-2
+Added Pin To Net: NetName=+3.3 Pin=J12-3
+Added Pin To Net: NetName=IO1 Pin=J12-4
+Added Pin To Net: NetName=IO2 Pin=J12-5
+Added Pin To Net: NetName=TX Pin=J12-6
+Added Pin To Net: NetName=RX Pin=J12-7
+Added Pin To Net: NetName=IO42 Pin=J12-8
+Added Pin To Net: NetName=IO41 Pin=J12-9
+Added Pin To Net: NetName=IO40 Pin=J12-10
+Added Pin To Net: NetName=IO39 Pin=J12-11
+Added Pin To Net: NetName=IO38 Pin=J12-12
+Added Pin To Net: NetName=IO37 Pin=J12-13
+Added Pin To Net: NetName=IO36 Pin=J12-14
+Added Pin To Net: NetName=IO35 Pin=J12-15
+Added Pin To Net: NetName=Boot Pin=J12-16
+Added Pin To Net: NetName=GPIO45 Pin=J12-17
+Added Pin To Net: NetName=IO45 Pin=J12-18
+Added Pin To Net: NetName=IO47 Pin=J12-19
+Added Pin To Net: NetName=IO21 Pin=J12-20
+Added Pin To Net: NetName=IO14 Pin=J12-21
+Added Pin To Net: NetName=MISO Pin=J12-22
+Added Pin To Net: NetName=IO4 Pin=J10-6
+Added Pin To Net: NetName=IO4 Pin=R1-1
+Added Pin To Net: NetName=IO4 Pin=U5-4
+Added Net: Name=IO4
+Added Pin To Net: NetName=IO5 Pin=J10-7
+Added Pin To Net: NetName=IO5 Pin=R2-1
+Added Pin To Net: NetName=IO5 Pin=U5-5
+Added Net: Name=IO5
+Added Pin To Net: NetName=IO6 Pin=J10-8
+Added Pin To Net: NetName=IO6 Pin=R3-1
+Added Pin To Net: NetName=IO6 Pin=U5-6
+Added Net: Name=IO6
+Added Member To Class: ClassName=ESP32S3 Member=Component J10 22 pins
+Added Member To Class: ClassName=ESP32S3 Member=Component J12 22 pins

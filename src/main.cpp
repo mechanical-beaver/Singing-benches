@@ -107,29 +107,7 @@ uint32_t _trig_lag = 1000;
 
 //-----Leds-----
 #ifdef LED
-#include <FastLED.h>
-
-#include "fastspi_types.h"
-
-#define LED_count 1
-#define LED_pin 48
-
-CRGB leds[LED_count];
-
-struct colors
-{
-    String err;
-    String success;
-    String play;
-    String restart;
-};
-colors _cols;
-
-void led_on(String hex_code);
-void led_lag_off();
-
-#define LED_ON(hex) led_on(hex)
-#define LED_LAG() led_lag_off()
+#include <LED.h>
 #else
 #define LED_ON(hex) ((void)0)
 #define LED_LAG() ((void)0)
@@ -138,66 +116,7 @@ void led_lag_off();
 
 //-----BT-----
 #ifdef BT
-#include <BLE2902.h>
-#include <BLE2904.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-
-#include "BLECharacteristic.h"
-#include "BLESecurity.h"
-// #include "BLEUUID.h"
-
-BLEServer *BT_server = nullptr;
-BLECharacteristic *BT_tx_chrctrstc;
-bool connect_status = false;
-bool old_connect_status = false;
-bool BT_flag = false;
-String BT_massage;
-
-struct bt_uuid
-{
-    char service[64];
-    char tx[64];
-    char rx[64];
-};
-bt_uuid _bt_uuid;
-char _bt_name[16];
-uint32_t _bt_pass;
-
-class MyServerCallbacks : public BLEServerCallbacks
-{
-    void onConnect(BLEServer *BT_server)
-    {
-        connect_status = true;
-    }
-
-    void onDisconnect(BLEServer *BT_server)
-    {
-        connect_status = false;
-    }
-};
-
-class MyCallbacks : public BLECharacteristicCallbacks
-{
-    void onWrite(BLECharacteristic *BT_chrctrstc)
-    {
-        std::string rxValue = BT_chrctrstc->getValue();
-        if (rxValue.length() > 0)
-        {
-            BT_massage = rxValue.c_str();
-        }
-    }
-};
-
-void BT_init();
-void BT_user_status();
-template <typename T>
-void Write_to_BT(T msg);
-
-#define BT_INIT() BT_init()
-#define BT_USR_STATUS() BT_user_status()
-#define BT_WRITE(msg) Write_to_BT(msg)
+#include <BT.h>
 #else
 #define BT_INIT() ((void)0)
 #define BT_USR_STATUS() ((void)0)
@@ -549,74 +468,6 @@ void change_json()
     }
 
     Json.close();
-}
-#endif
-
-#ifdef BT
-void BT_init()
-{
-    BLEDevice::init(_bt_name);
-
-    BLESecurity *BT_security = new BLESecurity();
-    BT_security->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
-    BT_security->setCapability(ESP_IO_CAP_OUT);
-    BT_security->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-    BT_security->setKeySize(16);
-    BT_security->setStaticPIN(_bt_pass);
-
-    BT_server = BLEDevice::createServer();
-    BT_server->setCallbacks(new MyServerCallbacks());
-
-    BLEService *BT_service;
-    BT_service = BT_server->createService(_bt_uuid.service);
-
-    BT_tx_chrctrstc = BT_service->createCharacteristic(_bt_uuid.tx, BLECharacteristic::PROPERTY_NOTIFY);
-    BT_tx_chrctrstc->addDescriptor(new BLE2902());
-
-    BLECharacteristic *BT_rx_chrctrstc = BT_service->createCharacteristic(_bt_uuid.rx, BLECharacteristic::PROPERTY_WRITE);
-    BT_rx_chrctrstc->setCallbacks(new MyCallbacks());
-
-    BT_service->start();
-    BT_server->getAdvertising()->start();
-}
-
-void BT_user_status()
-{
-    if (connect_status && !old_connect_status)
-    {
-        UART_PRINT("BLE client connected");
-        old_connect_status = connect_status;
-    }
-
-    if (!connect_status && old_connect_status)
-    {
-        if (!BT_flag)
-        {
-            global_timer = millis();
-            BT_flag = true;
-        }
-        else if (millis() - global_timer >= 500)
-        {
-            BT_server->startAdvertising();
-            UART_PRINT("BLE client disconnected. Start advertising...");
-            old_connect_status = connect_status;
-        }
-    }
-}
-
-template <typename T>
-void Write_to_BT(T msg)
-{
-    if (connect_status)
-    {
-        String input = (String)msg;
-
-        if (input.length() > 0)
-        {
-            BT_tx_chrctrstc->setValue(input.c_str());
-            BT_tx_chrctrstc->notify();
-        }
-    }
 }
 #endif
 
