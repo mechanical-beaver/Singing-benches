@@ -1,0 +1,8 @@
+Added Component: Designator=C54(FP-CL21-IPC_C)
+Added Component: Designator=C55(FP-CL21-IPC_C)
+Add Pin To Net: Unknown Pin: Pin C54-1
+Add Pin To Net: Unknown Pin: Pin C54-2
+Add Pin To Net: Unknown Pin: Pin C55-1
+Add Pin To Net: Unknown Pin: Pin C55-2
+Add Class Member: Failed to add class member : Component C54 1uF
+Add Class Member: Failed to add class member : Component C55 0.1uF

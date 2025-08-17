@@ -1,0 +1,8 @@
+/                ← root of the SD card
+├── config.json  ← configuration file
+├── info.txt     ← information file
+└── music/       ← folder containing music files
+    ├── track1.mp3
+    ├── track2.mp3
+    ├── track3.mp3
+    └── ...         ← other .mp3 files
