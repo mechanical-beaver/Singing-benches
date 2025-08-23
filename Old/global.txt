@@ -1,0 +1,57 @@
+.h:
+// #include <BT_custom.h>
+// #include <US_custom.h>
+
+.cpp:
+
+void echo(String msg)
+{
+    UART_PRINT("\n" + msg);
+    // BT_WRITE("\n" + msg);
+}
+
+void get_info(char ft)
+{
+...
+#ifdef JSON
+    else if (ft == 'J')
+    {
+        message += config["DAC"].as<String>();
+        message += "\n";
+        // message += config["US"].as<String>();
+        echo(message);
+    }
+#endif
+}
+
+String get_command()
+{
+// #ifdef BT
+        //     if (BT_message.length() != 0)
+        //     {
+        //         return BT_message;
+    //     }
+// #endif
+
+#ifdef UART
+                if (Serial.available())
+            {
+        return Serial.readString();
+    }
+#endif
+}
+
+
+void command_processing(String command)
+{
+...
+    // else if (command == "dist")
+    // {
+    //     TRIG_CHANGE('D');
+    // }
+    // else if (command == "lag")
+    // {
+    //     TRIG_CHANGE('L');
+    // }
+...
+}

@@ -1,24 +1,22 @@
 #pragma once
 
+#include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
 #include <Config.h>
-#include <FastLED.h>
 
 #include <cstdint>
 #include <cstdlib>
 
-#include "fastspi_types.h"
-
-#ifdef LED
-#define LED_TYPE WS2812
-#define COLOR_SEQUENCE GRB
+#ifdef N_LEDS
+#define LED_TYPE NEO_KHZ800
+#define COLOR_SEQUENCE NEO_GRB
 
 #define LED_COUNT 1
 
-extern CRGB leds[LED_COUNT];
+extern Adafruit_NeoPixel led_strip;
 
 void led_init();
-void led_on(String hex_code);
+void led_on(uint32_t hex_code);
 void led_lag_off();
 
 #define LED_INIT() led_init()

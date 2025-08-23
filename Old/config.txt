@@ -1,0 +1,60 @@
+.h:
+
+// #ifdef US
+// extern uint16_t _trig_dist;
+// extern uint32_t _trig_lag;
+// #endif
+
+// #ifdef BT
+// struct bt_uuid
+// {
+//     char service[63];
+//     char tx[63];
+//     char rx[63];
+// };
+// extern bt_uuid _bt_uuid;
+// extern char _bt_name[16];
+// extern uint32_t _bt_pass;
+// #endif
+
+.cpp:
+// #ifdef US
+// uint16_t _trig_dist;
+// uint32_t _trig_lag;
+// #endif
+
+// #ifdef BT
+// bt_uuid _bt_uuid;
+// char _bt_name[16];
+// uint32_t _bt_pass;
+// #endif
+
+void get_conf()
+{
+...
+#ifdef BT
+    strncpy(_bt_name, config["BT"]["name"], sizeof(_bt_name));
+    _bt_pass = config["BT"]["pass"];
+
+    strncpy(_bt_uuid.service, config["BT"]["UUID"]["service"], sizeof(_bt_uuid.service));
+    strncpy(_bt_uuid.tx, config["BT"]["UUID"]["chrctrstc_tx"], sizeof(_bt_uuid.tx));
+    strncpy(_bt_uuid.rx, config["BT"]["UUID"]["chrctrstc_rx"], sizeof(_bt_uuid.rx));
+#endif
+
+#ifdef US
+    _trig_dist = config["US"]["trig_dist"];
+    _trig_lag = config["US"]["trig_lag"];
+#endif
+...
+}
+
+void change_json()
+{
+...
+    // #ifdef US
+    //     config["US"]["trig_dist"] = _trig_dist;
+    //     config["US"]["trig_lag"] = _trig_lag;
+    // #endif
+...
+}
+

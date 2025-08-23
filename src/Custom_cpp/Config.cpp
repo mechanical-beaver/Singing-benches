@@ -3,33 +3,28 @@
 
 #include <cstdint>
 
+#include "WString.h"
+
 JsonDocument config;
 
-#ifdef US
-uint16_t _trig_dist;
-uint32_t _trig_lag;
-#endif
+uint32_t _hex2val(String path0, String path1);
+String _val2hex(uint32_t value);
 
-#ifdef BT
-bt_uuid _bt_uuid;
-char _bt_name[16];
-uint32_t _bt_pass;
-#endif
-
-#ifdef LED
+#ifdef N_LEDS
 colors _cols;
 #endif
 
 #ifdef JSON
 const char *Json_path = "/config.json";
 uint8_t _volume;
+uint8_t global_volume;
 
 void get_conf()
 {
     File Json = SD.open(Json_path);
     if (!Json)
     {
-        // ERR("File not init");
+        ERR("File not init");
     }
 
     DeserializationError Json_error = deserializeJson(config, Json);
@@ -40,28 +35,14 @@ void get_conf()
     {
         char err[128];
         sprintf(err, "Error: %s", Json_error.c_str());
-        // ERR(err);
+        ERR(err);
     }
 
-#ifdef LED
-    _cols.err = config["LED"]["error"].as<String>();
-    _cols.success = config["LED"]["successful"].as<String>();
-    _cols.play = config["LED"]["play"].as<String>();
-    _cols.restart = config["LED"]["rest"].as<String>();
-#endif
-
-#ifdef BT
-    strncpy(_bt_name, config["BT"]["name"], sizeof(_bt_name));
-    _bt_pass = config["BT"]["pass"];
-
-    strncpy(_bt_uuid.service, config["BT"]["UUID"]["service"], sizeof(_bt_uuid.service));
-    strncpy(_bt_uuid.tx, config["BT"]["UUID"]["chrctrstc_tx"], sizeof(_bt_uuid.tx));
-    strncpy(_bt_uuid.rx, config["BT"]["UUID"]["chrctrstc_rx"], sizeof(_bt_uuid.rx));
-#endif
-
-#ifdef US
-    _trig_dist = config["US"]["trig_dist"];
-    _trig_lag = config["US"]["trig_lag"];
+#ifdef N_LEDS
+    _cols.err = _hex2val("LED", "error");
+    _cols.success = _hex2val("LED", "successful");
+    _cols.play = _hex2val("LED", "play");
+    _cols.restart = _hex2val("LED", "rest");
 #endif
 
     _volume = config["DAC"]["volume"];
@@ -77,10 +58,11 @@ void change_json()
         echo("File not init");
     }
 
-#ifdef US
-    config["US"]["trig_dist"] = _trig_dist;
-    config["US"]["trig_lag"] = _trig_lag;
-#endif
+    config["LED"]["error"] = _val2hex(_cols.err);
+    config["LED"]["successful"] = _val2hex(_cols.success);
+    config["LED"]["play"] = _val2hex(_cols.play);
+    config["LED"]["rest"] = _val2hex(_cols.restart);
+
     config["DAC"]["volume"] = _volume;
 
     if (serializeJson(config, Json) == 0)
@@ -94,3 +76,35 @@ void change_json()
 #else
 uint8_t _volume = 5;
 #endif
+
+String get_txt(const char *Path)
+{
+    File file = SD.open(Path);
+    if (!file)
+    {
+        echo("Not found file");
+        return "";
+    }
+
+    String out;
+
+    while (file.available())
+    {
+        out += file.readString();
+    }
+
+    return out;
+}
+
+uint32_t _hex2val(String path0, String path1)
+{
+    const char *hexStr = config[path0][path1];
+    return strtoul(hexStr, nullptr, 16);
+}
+
+String _val2hex(uint32_t value)
+{
+    char buffer[10];
+    sprintf(buffer, "0x%06x", value);
+    return String(buffer);
+}

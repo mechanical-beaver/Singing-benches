@@ -2,6 +2,12 @@
 #include <US_custom.h>
 
 #ifdef US
+
+// uint32_t old_millis;
+// bool dist_lag = false;
+// const uint8_t meas_lag = 250;
+// uint16_t dist;
+
 bool Trig_flag = false;
 
 NewPing US_sensor(US_TRIG_pin, US_ECHO_pin, US_max_dist);

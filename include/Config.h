@@ -2,18 +2,16 @@
 
 #include <Arduino.h>
 
+#include <cstdint>
+
 //-----Mode-----
 #define SD_Card
-// #define SPIFFS
 
 #define JSON
 
-#define BT
 #define UART
 
-// #define US
-
-#define LED
+#define N_LEDS
 //=====Mode=====
 
 //-----Pins-----
@@ -46,16 +44,10 @@
 #define LED_PIN 48
 //  ===WS2812===
 
-// ---US---
-#define US_TRIG_pin 17
-#define US_ECHO_pin 18
-// #define US_TRIG_pin 16
-// #define US_ECHO_pin 17
-// ===US===
-
 //=====Pins=====
 
 extern uint8_t _volume;
+extern uint8_t global_volume;
 
 //-----JSON-----
 #ifdef JSON
@@ -68,36 +60,20 @@ extern uint8_t _volume;
 
 extern JsonDocument config;
 
-#ifdef US
-extern uint16_t _trig_dist;
-extern uint32_t _trig_lag;
-#endif
-
-#ifdef BT
-struct bt_uuid
-{
-    char service[63];
-    char tx[63];
-    char rx[63];
-};
-extern bt_uuid _bt_uuid;
-extern char _bt_name[16];
-extern uint32_t _bt_pass;
-#endif
-
-#ifdef LED
+#ifdef N_LEDS
 struct colors
 {
-    String err;
-    String success;
-    String play;
-    String restart;
+    uint32_t err;
+    uint32_t success;
+    uint32_t play;
+    uint32_t restart;
 };
 extern colors _cols;
 #endif
 
 void get_conf();
 void change_json();
+String get_txt(const char* Path);
 
 #define GET_CONF() get_conf()
 #define CHANGE_JSON() change_json()

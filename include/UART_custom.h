@@ -3,8 +3,6 @@
 #include <Arduino.h>
 #include <Config.h>
 
-#include "HardwareSerial.h"
-
 #ifdef UART
 #define UART_BAUDRATE 115200
 

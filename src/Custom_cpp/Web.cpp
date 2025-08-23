@@ -1,0 +1,127 @@
+#include <AUDIO_custom.h>
+#include <Global.h>
+#include <LittleFS.h>
+#include <SD.h>
+#include <Web.h>
+#include <WiFi.h>
+
+#include "Config.h"
+
+GyverDBFile db(&LittleFS, "/data.db");
+SettingsGyver web("MusicBox", &db);
+
+void build(sets::Builder& b)
+{
+    // Guest
+    if (b.beginGroup(""))
+    {
+        {
+            sets::GuestAccess g(b);
+
+            if (b.Select("Songs", songs_list))
+            {
+                activ_song = b.build.value;
+            }
+
+            if (b.Slider(1, "Volume", 0, 21, 1, "", &global_volume))
+            {
+                volume_change('s');
+            }
+
+            if (b.Button("play", 0x00FF00))
+            {
+                if (!Play_flag)
+                {
+                    PCM5102.connecttoFS(SD, songs[activ_song].c_str());
+                    Play_flag = true;
+                }
+            }
+
+            b.Link("Autor", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&ab_channel=RickAstley");
+        }
+        b.endGroup();
+    }
+
+    // Admin
+    //     Button
+    if (b.Button("stop", 0xFF0000))
+    {
+        Play_flag = false;
+    }
+
+    // if (b.Button("update music list", 0x0800FF))
+    // {
+    //     get_music_list(SD, "/music");
+    // }
+
+    if (b.Button("save config", 0xFF0040))
+    {
+        CHANGE_JSON();
+    }
+
+    if (b.Button("restar", 0xFFFF00))
+    {
+        restart();
+    }
+    //     Info
+    b.Paragraph("Info", get_txt("/info.txt"));
+
+    //     Settings
+    if (b.beginGroup("LED"))
+    {
+        b.Switch(kk::led_status, "OFF/ON");
+
+        b.Color("Error", &_cols.err);
+        b.Color("Succsesful", &_cols.success);
+        b.Color("Playing", &_cols.play);
+        b.Color("Restarting", &_cols.restart);
+
+        b.endGroup();
+    }
+
+    if (b.beginGroup("DAC"))
+    {
+        b.Switch(kk::dac_status, "OFF/ON");
+        b.Slider("Volume", 0, 21, 1, "", &_volume);
+
+        b.endGroup();
+    };
+}
+
+void update(sets::Updater& u)
+{
+    u.update(1, global_volume);
+}
+
+void web_begin()
+{
+    LittleFS.begin(true);
+
+    web.fs.sd.setFS(SD);
+
+    db.begin();
+
+    db.init(kk::wifi_ssid, WIFI_AP_SSID);
+    db.init(kk::wifi_pass, WIFI_AP_PASS);
+    db.init(kk::admin_pass, ADMIN_PASS);
+    db.init(kk::led_status, (bool)1);
+    db.init(kk::dac_status, (bool)1);
+
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(db[kk::wifi_ssid], db[kk::wifi_pass]);
+
+    web.begin(false, "test");
+    web.onBuild(build);
+    web.onUpdate(update);
+
+    web.config.sliderTout = 100;
+    web.config.requestTout = 0;
+    web.config.updateTout = 2500;
+
+    web.setPass(db[kk::admin_pass]);
+}
+
+void web_loop()
+{
+    web.tick();
+}

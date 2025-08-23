@@ -1,5 +1,8 @@
 #include <Global.h>
 
+#include "Config.h"
+#include "WString.h"
+
 const char *info_path = "/info.txt";
 
 uint32_t global_timer;
@@ -7,6 +10,7 @@ uint8_t current_song;
 
 void sd_init()
 {
+    SPI.begin(12, 13, 11, SD_cs);
     if (!SD.begin(SD_cs))
     {
         ERR("SD dont init");
@@ -16,7 +20,6 @@ void sd_init()
 void echo(String msg)
 {
     UART_PRINT("\n" + msg);
-    BT_WRITE("\n" + msg);
 }
 
 void get_info(char ft)
@@ -47,7 +50,6 @@ void get_info(char ft)
     {
         message += config["DAC"].as<String>();
         message += "\n";
-        message += config["US"].as<String>();
         echo(message);
     }
 #endif
@@ -60,25 +62,39 @@ void restart()
     ESP.restart();
 }
 
+String get_command()
+{
+#ifdef UART
+    if (Serial.available())
+    {
+        return Serial.readString();
+    }
+#endif
+}
+
 void command_processing(String command)
 {
+    //!
     if (command == "play")
     {
         PCM5102.connecttoFS(SD, songs[current_song].c_str());
         Play_flag = true;
     }
+    //!
     else if (command == "stop")
     {
         Play_flag = false;
     }
+    //!
     else if (command == "v+")
     {
-        volume_change(true);
+        volume_change('p');
     }
     else if (command == "v-")
     {
-        volume_change(false);
+        volume_change('m');
     }
+    //?
     else if (command == "info")
     {
         get_info('I');
@@ -87,18 +103,12 @@ void command_processing(String command)
     {
         get_info('J');
     }
+    //!
     else if (command == "save")
     {
         CHANGE_JSON();
     }
-    else if (command == "dist")
-    {
-        TRIG_CHANGE('D');
-    }
-    else if (command == "lag")
-    {
-        TRIG_CHANGE('L');
-    }
+    //!
     else if (command == "rest")
     {
         restart();

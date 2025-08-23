@@ -1,30 +1,43 @@
 #include <Global.h>
 #include <LED_custom.h>
+#include <Web.h>
 
-#ifdef LED
+#include <cstdint>
 
-CRGB leds[LED_COUNT];
+#include "AUDIO_custom.h"
+#include "Config.h"
+
+#ifdef N_LEDS
+
+Adafruit_NeoPixel led_strip(LED_COUNT, LED_PIN, LED_TYPE + COLOR_SEQUENCE);
 
 void led_init()
 {
-    FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_SEQUENCE>(leds, LED_COUNT);
-    FastLED.setBrightness(100);
+    led_strip.begin();
+    led_strip.show();
+    led_strip.setBrightness(50);
 }
 
-void led_on(String hex_code)
+void led_on(uint32_t hex_code)
 {
-    leds[0] = strtoul(hex_code.c_str(), 0, 16);
-    FastLED.show();
-    global_timer = millis();
+    if (db[kk::led_status])
+    {
+        led_strip.setPixelColor(0, hex_code);
+        led_strip.show();
+        global_timer = millis();
+    }
 }
 
 void led_lag_off()
 {
-    if (leds[0].r + leds[0].g + leds[0].b != 0)
+    uint32_t color = led_strip.getPixelColor(0);
+
+    if (!Play_flag && color != 0)
     {
         if (millis() - global_timer >= 1000)
         {
-            led_on("0x000000");
+            led_strip.clear();
+            led_strip.show();
         }
     }
 }
