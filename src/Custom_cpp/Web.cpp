@@ -5,10 +5,17 @@
 #include <Web.h>
 #include <WiFi.h>
 
+#include <cstdint>
+
+#include "Arduino.h"
 #include "Config.h"
+#include "UART_custom.h"
+#include "WiFiType.h"
 
 GyverDBFile db(&LittleFS, "/data.db");
 SettingsGyver web("MusicBox", &db);
+
+void wifi_start();
 
 void build(sets::Builder& b)
 {
@@ -18,17 +25,17 @@ void build(sets::Builder& b)
         {
             sets::GuestAccess g(b);
 
-            if (b.Select("Songs", songs_list))
+            if (b.Select("Музыка:", songs_list))
             {
                 activ_song = b.build.value;
             }
 
-            if (b.Slider(1, "Volume", 0, 21, 1, "", &global_volume))
+            if (b.Slider(1, "Громкость:", 0, 21, 1, "", &global_volume))
             {
                 volume_change('s');
             }
 
-            if (b.Button("play", 0x00FF00))
+            if (b.Button("Играть", 0x00FF00))
             {
                 if (!Play_flag)
                 {
@@ -37,7 +44,7 @@ void build(sets::Builder& b)
                 }
             }
 
-            b.Link("Autor", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&ab_channel=RickAstley");
+            b.Link("Автор", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&ab_channel=RickAstley");
         }
         b.endGroup();
     }
@@ -86,11 +93,51 @@ void build(sets::Builder& b)
 
         b.endGroup();
     };
+
+    if (b.Switch(kk::uart_status, "UART"))
+    {
+        SWITCH_UART(db[kk::uart_status]);
+    }
+
+    if (b.Switch(kk::wifi_sta, "AP/STA"))
+    {
+        wifi_start();
+    }
 }
 
 void update(sets::Updater& u)
 {
     u.update(1, global_volume);
+}
+
+void wifi_start()
+{
+    if (db[kk::wifi_sta])
+    {
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASS);
+
+        delay(500);
+
+        uint8_t tries = 20;
+        while (WiFi.status() != WL_CONNECTED)
+        {
+            delay(500);
+            if (!--tries)
+            {
+                echo("Up STA failed");
+                WiFi.mode(WIFI_AP);
+                WiFi.softAP(db[kk::wifi_ssid], db[kk::wifi_pass]);
+                break;
+            }
+        }
+    }
+    else
+    {
+        WiFi.mode(WIFI_AP);
+
+        WiFi.softAP(db[kk::wifi_ssid], db[kk::wifi_pass]);
+    }
 }
 
 void web_begin()
@@ -106,9 +153,13 @@ void web_begin()
     db.init(kk::admin_pass, ADMIN_PASS);
     db.init(kk::led_status, (bool)1);
     db.init(kk::dac_status, (bool)1);
+    db.init(kk::uart_status, (bool)1);
+    db.init(kk::wifi_sta, (bool)1);
 
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(db[kk::wifi_ssid], db[kk::wifi_pass]);
+    wifi_start();
+
+    // WiFi.mode(WIFI_AP);
+    // WiFi.softAP(db[kk::wifi_ssid], db[kk::wifi_pass]);
 
     web.begin(false, "test");
     web.onBuild(build);

@@ -1,0 +1,13 @@
+{
+    "LED":
+    {
+        "error": "0xFF0000",
+        "successful": "0x00FF00",
+        "play": "0x00D2FF",
+        "rest": "0xFFFF00"
+    },
+    "DAC":
+    {
+        "volume": 5  
+    },
+}
