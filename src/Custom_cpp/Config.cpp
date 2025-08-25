@@ -18,6 +18,7 @@ colors _cols;
 const char *Json_path = "/config.json";
 uint8_t _volume;
 uint8_t global_volume;
+uint32_t _volume_rest_tout;
 
 void get_conf()
 {
@@ -46,6 +47,7 @@ void get_conf()
 #endif
 
     _volume = config["DAC"]["volume"];
+    _volume_rest_tout = config["DAC"]["rest_tout"];
 }
 
 void change_json()
@@ -64,6 +66,7 @@ void change_json()
     config["LED"]["rest"] = _val2hex(_cols.restart);
 
     config["DAC"]["volume"] = _volume;
+    config["DAC"]["rest_tout"] = _volume_rest_tout;
 
     if (serializeJson(config, Json) == 0)
     {

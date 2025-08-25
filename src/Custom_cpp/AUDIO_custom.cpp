@@ -108,7 +108,7 @@ void update_volume()
                 old_volume = global_volume;
             }
 
-            if (millis() - _timer >= 5000)
+            if (millis() - _timer >= _volume_rest_tout)
             {
                 global_volume = _volume;
                 update_flag = false;

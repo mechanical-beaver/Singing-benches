@@ -89,7 +89,8 @@ void build(sets::Builder& b)
     if (b.beginGroup("DAC"))
     {
         b.Switch(kk::dac_status, "OFF/ON");
-        b.Slider("Volume", 0, 21, 1, "", &_volume);
+        b.Slider("Volume", 1, 21, 1, "", &_volume);
+        b.Number("Timeout", &_volume_rest_tout, 0, 4294967295);
 
         b.endGroup();
     };

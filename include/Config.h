@@ -47,6 +47,7 @@
 //=====Pins=====
 
 extern uint8_t _volume;
+extern uint32_t _volume_rest_tout;
 extern uint8_t global_volume;
 
 //-----JSON-----
