@@ -3,9 +3,11 @@
 
 #include <cstdint>
 
+#include "HardwareSerial.h"
 #include "WString.h"
 
 JsonDocument config;
+JsonDocument statistic;
 
 uint32_t _hex2val(String path0, String path1);
 String _val2hex(uint32_t value);
@@ -16,27 +18,33 @@ colors _cols;
 
 #ifdef JSON
 const char *Json_path = "/config.json";
+const char *Stat_path = "/statistic.json";
+
 uint8_t _volume;
 uint8_t global_volume;
 uint32_t _volume_rest_tout;
 
+uint16_t general_start;
+uint16_t web_start;
+uint16_t button_start;
+
 void get_conf()
 {
-    File Json = SD.open(Json_path);
-    if (!Json)
+    File File = SD.open(Json_path);
+    if (!File)
     {
-        ERR("File not init");
+        ERR("File not found");
     }
 
-    DeserializationError Json_error = deserializeJson(config, Json);
+    DeserializationError err = deserializeJson(config, File);
 
-    Json.close();
+    File.close();
 
-    if (Json_error)
+    if (err)
     {
-        char err[128];
-        sprintf(err, "Error: %s", Json_error.c_str());
-        ERR(err);
+        char err_msg[128];
+        sprintf(err_msg, "Error: %s", err.c_str());
+        ERR(err_msg);
     }
 
 #ifdef N_LEDS
@@ -54,10 +62,10 @@ void change_json()
 {
     SD.remove(Json_path);
 
-    File Json = SD.open(Json_path, FILE_WRITE);
-    if (!Json)
+    File File = SD.open(Json_path, FILE_WRITE);
+    if (!File)
     {
-        echo("File not init");
+        echo("File not found");
     }
 
     config["LED"]["error"] = _val2hex(_cols.err);
@@ -68,16 +76,81 @@ void change_json()
     config["DAC"]["volume"] = _volume;
     config["DAC"]["rest_tout"] = _volume_rest_tout;
 
-    if (serializeJson(config, Json) == 0)
+    if (serializeJson(config, File) == 0)
     {
         echo("failed");
         delay(250);
     }
     echo("Success");
-    Json.close();
+    File.close();
+}
+
+void get_stat()
+{
+    File File = SD.open(Stat_path);
+    if (!File)
+    {
+        echo("File not found");
+        return;
+    }
+
+    DeserializationError err = deserializeJson(statistic, File);
+
+    File.close();
+
+    if (err)
+    {
+        char err_msg[128];
+        sprintf(err_msg, "Error: %s", err.c_str());
+        echo(err_msg);
+        return;
+    }
+
+    general_start = statistic["starts"]["general"];
+    web_start = statistic["starts"]["web"];
+    button_start = statistic["starts"]["button"];
+
+    for (uint8_t i = 0; i < tracks.size(); i++)
+    {
+        String name = tracks[i].name;
+        tracks[i].start = statistic["tracks"][name]["start"];
+    }
+}
+
+void save_stat()
+{
+    SD.remove(Stat_path);
+
+    File File = SD.open(Stat_path, FILE_WRITE);
+    if (!File)
+    {
+        echo("File not found");
+        return;
+    }
+
+    statistic["starts"]["general"] = general_start;
+    statistic["starts"]["web"] = web_start;
+    statistic["starts"]["button"] = button_start;
+
+    for (uint8_t i = 0; i < tracks.size(); i++)
+    {
+        String name = tracks[i].name;
+
+        statistic["tracks"][name]["name"] = tracks[i].name;
+        statistic["tracks"][name]["path"] = tracks[i].path;
+        statistic["tracks"][name]["start"] = tracks[i].start;
+    }
+
+    if (serializeJson(statistic, File) == 0)
+    {
+        echo("failed");
+        delay(250);
+    }
+    echo("Success");
+    File.close();
 }
 #else
-uint8_t _volume = 5;
+uint8_t _volume = global_volume = 5;
 #endif
 
 String get_txt(const char *Path)

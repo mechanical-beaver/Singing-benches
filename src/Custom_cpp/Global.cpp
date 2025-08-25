@@ -77,7 +77,7 @@ void command_processing(String command)
     //!
     if (command == "play")
     {
-        PCM5102.connecttoFS(SD, songs[current_song].c_str());
+        PCM5102.connecttoFS(SD, tracks[current_song].path.c_str());
         Play_flag = true;
     }
     //!

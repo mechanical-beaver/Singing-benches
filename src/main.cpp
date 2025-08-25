@@ -42,6 +42,7 @@ void setup()
     delay(500);
 
     get_music_list(SD, "/music");
+    get_stat();
 
     web_begin();
 

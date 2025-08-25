@@ -10,12 +10,16 @@
 #include "Arduino.h"
 #include "Config.h"
 #include "UART_custom.h"
+#include "WString.h"
 #include "WiFiType.h"
 
 GyverDBFile db(&LittleFS, "/data.db");
 SettingsGyver web("MusicBox", &db);
 
+bool stat_upd = false;
+
 void wifi_start();
+String stat_string();
 
 void build(sets::Builder& b)
 {
@@ -39,7 +43,15 @@ void build(sets::Builder& b)
             {
                 if (!Play_flag)
                 {
-                    PCM5102.connecttoFS(SD, songs[activ_song].c_str());
+                    PCM5102.connecttoFS(SD, tracks[activ_song].path.c_str());
+
+                    general_start++;
+                    web_start++;
+                    tracks[activ_song].start++;
+                    save_stat();
+
+                    stat_upd = true;
+
                     Play_flag = true;
                 }
             }
@@ -72,6 +84,8 @@ void build(sets::Builder& b)
     }
     //     Info
     b.Paragraph("Info", get_txt("/info.txt"));
+
+    b.Paragraph(2, "Stats", stat_string());
 
     //     Settings
     if (b.beginGroup("LED"))
@@ -109,6 +123,11 @@ void build(sets::Builder& b)
 void update(sets::Updater& u)
 {
     u.update(1, global_volume);
+    if (stat_upd)
+    {
+        stat_upd = false;
+        u.update(2, stat_string());
+    }
 }
 
 void wifi_start()
@@ -176,4 +195,21 @@ void web_begin()
 void web_loop()
 {
     web.tick();
+}
+
+String stat_string()
+{
+    String out;
+
+    out += "General:" + String(general_start) + "\n";
+    out += "Web:" + String(web_start) + "\n";
+    out += "Button:" + String(button_start) + "\n";
+
+    out += "\n\n\n";
+
+    for (uint8_t i = 0; i < tracks.size(); i++)
+    {
+        out += tracks[i].name + ":" + String(tracks[i].start) + "\n";
+    }
+    return out;
 }

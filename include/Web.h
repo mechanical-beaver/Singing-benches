@@ -12,7 +12,6 @@
 
 #define WIFI_STA_SSID ""
 #define WIFI_STA_PASS ""
-
 extern GyverDBFile db;
 extern SettingsGyver web;
 

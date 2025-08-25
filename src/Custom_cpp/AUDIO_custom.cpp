@@ -9,7 +9,7 @@
 
 Audio PCM5102;
 
-std::vector<String> songs;
+std::vector<track> tracks;
 
 bool Play_flag;
 String songs_list;
@@ -49,22 +49,27 @@ void get_music_list(fs::FS &fs, const char *dirname)
         {
             String filepath = String(file.path());
 
-            filepath.toLowerCase();
-
             if (filepath.endsWith(".mp3"))
             {
-                songs.push_back(filepath);
+                track t;
+
+                int lastSlash = filepath.lastIndexOf('/');
+                int dotPos = filepath.lastIndexOf('.');
+                String name = filepath.substring(lastSlash + 1, dotPos);
+                t.name = name;
+
+                filepath.toLowerCase();
+                t.path = filepath;
+
+                tracks.push_back(t);
             }
         }
         file = root.openNextFile();
     }
 
-    for (const auto &file : songs)
+    for (uint8_t i = 0; i < tracks.size(); i++)
     {
-        int lastSlash = file.lastIndexOf('/');
-        int dotPos = file.lastIndexOf('.');
-        String name = file.substring(lastSlash + 1, dotPos);
-        list += name + ";";
+        list += tracks[i].name + " ;";
     }
     songs_list = list;
 }
@@ -153,7 +158,7 @@ void play()
     }
     current_song++;
 
-    if (current_song > songs.size() - 1)
+    if (current_song > tracks.size() - 1)
     {
         current_song = 0;
     }

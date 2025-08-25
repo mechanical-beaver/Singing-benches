@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include "WString.h"
+
 //-----Mode-----
 #define SD_Card
 
@@ -60,6 +62,11 @@ extern uint8_t global_volume;
 #include "FS.h"
 
 extern JsonDocument config;
+extern JsonDocument statistic;
+
+extern uint16_t general_start;
+extern uint16_t web_start;
+extern uint16_t button_start;
 
 #ifdef N_LEDS
 struct colors
@@ -74,6 +81,10 @@ extern colors _cols;
 
 void get_conf();
 void change_json();
+
+void get_stat();
+void save_stat();
+
 String get_txt(const char* Path);
 
 #define GET_CONF() get_conf()
